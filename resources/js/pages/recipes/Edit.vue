@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
-import { Plus, X } from 'lucide-vue-next';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ImagePlus, Plus, X } from 'lucide-vue-next';
 import { ref } from 'vue';
-import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     compileIngredients,
     compileSteps,
@@ -102,142 +98,226 @@ function onImage(event: Event): void {
     const target = event.target as HTMLInputElement;
     form.image = target.files?.[0] ?? null;
 }
+
+const inputClass =
+    'w-full rounded-xl border border-rule bg-cream-soft px-4 py-2.5 text-sm outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30';
+const labelClass = 'text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-soft';
+const pillBtn =
+    'inline-flex items-center gap-1.5 rounded-full border border-rule bg-cream-soft px-3.5 py-1.5 text-xs font-medium transition hover:bg-ink/5 active:scale-[0.98]';
 </script>
 
 <template>
     <Head :title="`${recipe.title} bewerken`" />
 
-    <form class="flex flex-col gap-6 p-4 md:p-6" @submit.prevent="submit">
-        <Heading :title="`${recipe.title} bewerken`" />
-
-        <div class="grid gap-4 md:grid-cols-2">
-            <div class="grid gap-2 md:col-span-2">
-                <Label for="title">Titel</Label>
-                <Input id="title" v-model="form.title" required />
-                <InputError :message="form.errors.title" />
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="servings">Personen</Label>
-                <Input id="servings" v-model.number="form.servings" type="number" min="1" max="99" required />
-                <InputError :message="form.errors.servings" />
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="cook_time">Kooktijd (min)</Label>
-                <Input
-                    id="cook_time"
-                    :model-value="form.cook_time_minutes ?? ''"
-                    type="number"
-                    min="0"
-                    @update:model-value="
-                        (value) => (form.cook_time_minutes = value === '' ? null : Number(value))
-                    "
-                />
-                <InputError :message="form.errors.cook_time_minutes" />
-            </div>
-
-            <div class="grid gap-2 md:col-span-2">
-                <Label for="source_url">Bron URL (optioneel)</Label>
-                <Input id="source_url" v-model="form.source_url" type="url" />
-            </div>
-
-            <div class="grid gap-2 md:col-span-2">
-                <Label for="image">Vervang afbeelding</Label>
-                <Input id="image" type="file" accept="image/*" @change="onImage" />
-            </div>
+    <form class="flex flex-col gap-5 p-4 md:p-6" @submit.prevent="submit">
+        <div class="rounded-3xl bg-ink p-6 text-cream md:p-8">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-cream/60">
+                Bewerken
+            </p>
+            <h1 class="mt-1 font-display text-3xl leading-tight md:text-4xl">
+                {{ recipe.title }}
+            </h1>
         </div>
 
-        <section class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-                <h2 class="font-semibold">Ingrediënten</h2>
-                <div class="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" @click="addIngredientHeader">
-                        <Plus class="size-4" /> Kopje
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" @click="addIngredientItem">
-                        <Plus class="size-4" /> Regel
-                    </Button>
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <h2 class="mb-4 font-display text-2xl leading-tight">Basis</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="flex flex-col gap-1.5 md:col-span-2">
+                    <label for="title" :class="labelClass">Titel</label>
+                    <input id="title" v-model="form.title" :class="inputClass" required />
+                    <InputError :message="form.errors.title" />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label for="servings" :class="labelClass">Personen</label>
+                    <input
+                        id="servings"
+                        v-model.number="form.servings"
+                        type="number"
+                        min="1"
+                        max="99"
+                        required
+                        :class="inputClass"
+                    />
+                    <InputError :message="form.errors.servings" />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label for="cook_time" :class="labelClass">Kooktijd (min)</label>
+                    <input
+                        id="cook_time"
+                        :value="form.cook_time_minutes ?? ''"
+                        type="number"
+                        min="0"
+                        :class="inputClass"
+                        @input="
+                            (e: Event) => {
+                                const v = (e.target as HTMLInputElement).value;
+                                form.cook_time_minutes = v === '' ? null : Number(v);
+                            }
+                        "
+                    />
+                    <InputError :message="form.errors.cook_time_minutes" />
+                </div>
+
+                <div class="flex flex-col gap-1.5 md:col-span-2">
+                    <label for="source_url" :class="labelClass">Bron URL (optioneel)</label>
+                    <input id="source_url" v-model="form.source_url" type="url" :class="inputClass" />
+                </div>
+
+                <div class="flex flex-col gap-1.5 md:col-span-2">
+                    <label :class="labelClass">Vervang afbeelding</label>
+                    <label
+                        class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-rule bg-cream px-4 py-3 text-sm transition hover:bg-ink/5"
+                    >
+                        <ImagePlus class="size-4 text-ink-soft" />
+                        <span class="flex-1 text-ink-soft">
+                            {{ form.image ? form.image.name : 'Klik om een nieuwe afbeelding te kiezen' }}
+                        </span>
+                        <input
+                            id="image"
+                            type="file"
+                            accept="image/*"
+                            class="hidden"
+                            @change="onImage"
+                        />
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="font-display text-2xl leading-tight">Ingrediënten</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" :class="pillBtn" @click="addIngredientHeader">
+                        <Plus class="size-3.5" /> Kopje
+                    </button>
+                    <button type="button" :class="pillBtn" @click="addIngredientItem">
+                        <Plus class="size-3.5" /> Regel
+                    </button>
                 </div>
             </div>
 
-            <template v-for="(row, idx) in ingredientRows" :key="`ing-${idx}`">
-                <div v-if="row.kind === 'header'" class="grid grid-cols-[1fr_auto] items-center gap-2">
-                    <Input
-                        v-model="row.name"
-                        placeholder="Kopje, bv 'Voor de saus'"
-                        class="font-semibold"
-                    />
-                    <Button type="button" variant="ghost" size="icon" @click="removeIngredientRow(idx)">
-                        <X class="size-4" />
-                    </Button>
-                </div>
-                <div v-else class="grid grid-cols-[1fr_auto] items-start gap-2">
-                    <div class="grid grid-cols-[80px_90px_1fr] gap-2 sm:grid-cols-[100px_120px_1fr]">
-                        <Input v-model="row.quantity_text" placeholder="200" />
-                        <Input v-model="row.unit_text" placeholder="g / el" />
-                        <Input v-model="row.name" />
+            <div class="flex flex-col gap-2">
+                <template v-for="(row, idx) in ingredientRows" :key="`ing-${idx}`">
+                    <div
+                        v-if="row.kind === 'header'"
+                        class="flex items-center gap-2 rounded-xl bg-block-lime px-3 py-2"
+                    >
+                        <input
+                            v-model="row.name"
+                            placeholder="Kopje, bv 'Voor de saus'"
+                            class="w-full bg-transparent text-sm font-semibold uppercase tracking-[0.16em] outline-none placeholder:text-ink/50"
+                        />
+                        <button
+                            type="button"
+                            class="grid size-7 shrink-0 place-items-center rounded-full text-ink/70 transition hover:bg-ink/10"
+                            @click="removeIngredientRow(idx)"
+                        >
+                            <X class="size-3.5" />
+                        </button>
                     </div>
-                    <Button type="button" variant="ghost" size="icon" @click="removeIngredientRow(idx)">
-                        <X class="size-4" />
-                    </Button>
-                </div>
-            </template>
+                    <div
+                        v-else
+                        class="grid grid-cols-[80px_90px_1fr_auto] items-center gap-2 sm:grid-cols-[100px_120px_1fr_auto]"
+                    >
+                        <input v-model="row.quantity_text" placeholder="200" :class="inputClass" />
+                        <input v-model="row.unit_text" placeholder="g / el" :class="inputClass" />
+                        <input v-model="row.name" placeholder="bloem" :class="inputClass" />
+                        <button
+                            type="button"
+                            class="grid size-9 place-items-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-warn"
+                            @click="removeIngredientRow(idx)"
+                        >
+                            <X class="size-4" />
+                        </button>
+                    </div>
+                </template>
+            </div>
         </section>
 
-        <section class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-                <h2 class="font-semibold">Stappen</h2>
-                <div class="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" @click="addStepHeader">
-                        <Plus class="size-4" /> Kopje
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" @click="addStepItem">
-                        <Plus class="size-4" /> Stap
-                    </Button>
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="font-display text-2xl leading-tight">Stappen</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" :class="pillBtn" @click="addStepHeader">
+                        <Plus class="size-3.5" /> Kopje
+                    </button>
+                    <button type="button" :class="pillBtn" @click="addStepItem">
+                        <Plus class="size-3.5" /> Stap
+                    </button>
                 </div>
             </div>
 
-            <template v-for="(row, idx) in stepRows" :key="`step-${idx}`">
-                <div v-if="row.kind === 'header'" class="grid grid-cols-[1fr_auto] items-center gap-2">
-                    <Input
-                        v-model="row.name"
-                        placeholder="Kopje, bv 'Voorbereiden'"
-                        class="font-semibold"
-                    />
-                    <Button type="button" variant="ghost" size="icon" @click="removeStepRow(idx)">
-                        <X class="size-4" />
-                    </Button>
-                </div>
-                <div v-else class="flex items-start gap-2">
-                    <span class="mt-3 size-7 shrink-0 rounded-full bg-muted text-center leading-7 text-sm font-medium">
-                        {{ stepNumber(idx) }}
-                    </span>
-                    <textarea
-                        v-model="row.body"
-                        class="min-h-[72px] flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-                    />
-                    <Button type="button" variant="ghost" size="icon" @click="removeStepRow(idx)">
-                        <X class="size-4" />
-                    </Button>
-                </div>
-            </template>
+            <div class="flex flex-col gap-3">
+                <template v-for="(row, idx) in stepRows" :key="`step-${idx}`">
+                    <div
+                        v-if="row.kind === 'header'"
+                        class="flex items-center gap-2 rounded-xl bg-block-sky px-3 py-2"
+                    >
+                        <input
+                            v-model="row.name"
+                            placeholder="Kopje, bv 'Voorbereiden'"
+                            class="w-full bg-transparent text-sm font-semibold uppercase tracking-[0.16em] outline-none placeholder:text-ink/50"
+                        />
+                        <button
+                            type="button"
+                            class="grid size-7 shrink-0 place-items-center rounded-full text-ink/70 transition hover:bg-ink/10"
+                            @click="removeStepRow(idx)"
+                        >
+                            <X class="size-3.5" />
+                        </button>
+                    </div>
+                    <div v-else class="flex items-start gap-2">
+                        <span
+                            class="mt-1 grid size-9 shrink-0 place-items-center rounded-full bg-ink text-sm font-semibold text-cream tabular-nums"
+                        >
+                            {{ stepNumber(idx) }}
+                        </span>
+                        <textarea
+                            v-model="row.body"
+                            placeholder="Beschrijf de stap..."
+                            class="min-h-[88px] flex-1 rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
+                        />
+                        <button
+                            type="button"
+                            class="mt-1 grid size-9 place-items-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-warn"
+                            @click="removeStepRow(idx)"
+                        >
+                            <X class="size-4" />
+                        </button>
+                    </div>
+                </template>
+            </div>
         </section>
 
-        <section class="grid gap-2">
-            <Label for="notes">Notities</Label>
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <label for="notes" class="mb-2 block font-display text-2xl leading-tight">
+                Notities
+            </label>
             <textarea
                 id="notes"
                 v-model="form.notes"
-                class="min-h-[88px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                placeholder="Volgende keer minder zout..."
+                class="min-h-[120px] w-full rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
         </section>
 
-        <div class="flex justify-end gap-2">
-            <Button as-child variant="ghost">
-                <a :href="showRecipe(recipe.id).url">Annuleer</a>
-            </Button>
-            <Button type="submit" :disabled="form.processing">Opslaan</Button>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <Link
+                :href="showRecipe(recipe.id).url"
+                class="inline-flex items-center gap-2 rounded-full border border-rule px-5 py-2.5 text-sm font-medium transition hover:bg-ink/5"
+            >
+                Annuleer
+            </Link>
+            <button
+                type="submit"
+                :disabled="form.processing"
+                class="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-cream transition active:scale-[0.98] hover:bg-[#3a2c24] disabled:opacity-50"
+            >
+                Opslaan
+            </button>
         </div>
     </form>
 </template>

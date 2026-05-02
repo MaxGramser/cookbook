@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import { ChefHat } from 'lucide-vue-next';
 </script>
 
 <template>
     <div
-        class="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
+        class="flex aspect-square size-8 items-center justify-center rounded-full bg-brand text-ink"
     >
-        <AppLogoIcon class="size-5 fill-current text-white dark:text-black" />
+        <ChefHat class="size-4" />
     </div>
-    <div class="ml-1 grid flex-1 text-left text-sm">
-        <span class="mb-0.5 truncate leading-tight font-semibold"
-            >Laravel Starter Kit</span
-        >
+    <div class="ml-2 grid flex-1 text-left">
+        <span class="font-display text-lg leading-none italic">Mijn kookboek</span>
     </div>
 </template>

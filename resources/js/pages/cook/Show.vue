@@ -16,7 +16,6 @@ import {
     X,
 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,7 +32,7 @@ import {
 } from '@/components/ui/sheet';
 import { useStepTimers, detectTimerMinutes } from '@/composables/useStepTimers';
 import { useWakeLock } from '@/composables/useWakeLock';
-import { durationBetween, formatDuration, formatStopwatch } from '@/lib/duration';
+import { formatDuration, formatStopwatch } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import {
@@ -225,103 +224,129 @@ function timerFinished(stepId: number): boolean {
 <template>
     <Head :title="`Koken: ${session.recipe.title}`" />
 
-    <div class="flex min-h-svh flex-col bg-background pb-32">
-        <header
-            class="sticky top-0 z-20 border-b border-sidebar-border/70 bg-background/90 backdrop-blur-md dark:border-sidebar-border"
-        >
-            <div class="flex items-center gap-2 px-3 py-2.5">
-                <ChefHat class="size-5 shrink-0 text-muted-foreground" />
-                <h1 class="line-clamp-1 flex-1 text-sm font-semibold sm:text-base">
-                    {{ session.recipe.title }}
-                </h1>
-                <button
-                    v-if="!isCompleted"
-                    type="button"
-                    class="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums transition active:scale-95"
-                    :class="
-                        isPaused
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-primary text-primary-foreground'
-                    "
-                    :title="isPaused ? 'Hervat' : 'Pauzeer'"
-                    :aria-label="isPaused ? 'Hervat' : 'Pauzeer'"
-                    @click="togglePause"
-                >
-                    <Pause v-if="!isPaused" class="size-3.5 animate-pulse" />
-                    <Play v-else class="size-3.5" />
-                    <span>{{ elapsedLive }}</span>
-                </button>
-                <div
-                    v-else
-                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-sm font-semibold tabular-nums text-muted-foreground"
-                    :title="`Voltooid in ${elapsedLabel}`"
-                >
-                    <Clock class="size-3.5" />
-                    <span>{{ elapsedLive }}</span>
-                </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                        <Button type="button" variant="ghost" size="icon" class="size-9 shrink-0">
-                            <MoreVertical class="size-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem v-if="!isCompleted" @select="togglePause">
-                            <Pause v-if="!isPaused" class="size-4" />
-                            <Play v-else class="size-4" />
-                            {{ isPaused ? 'Hervat' : 'Pauzeer' }}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem @select="notesOpen = true">
-                            <MessageSquare class="size-4" /> Notitie toevoegen
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem class="text-destructive" @select="cancel">
-                            <X class="size-4" /> Sessie afbreken
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-            <div class="flex items-center gap-3 px-3 pb-2">
-                <span class="text-xs text-muted-foreground">Personen</span>
-                <div class="ml-auto flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        class="size-9"
-                        :disabled="multiplier <= 0.25"
-                        @click="bumpMultiplier(-0.25)"
-                    >
-                        <Minus class="size-4" />
-                    </Button>
-                    <div class="flex min-w-[72px] flex-col items-center leading-tight">
-                        <span class="text-lg font-semibold tabular-nums">{{ scaledServings }}</span>
-                        <span class="text-[10px] text-muted-foreground">×{{ multiplier }}</span>
-                    </div>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        class="size-9"
-                        @click="bumpMultiplier(0.25)"
-                    >
-                        <Plus class="size-4" />
-                    </Button>
+    <div class="flex min-h-svh flex-col bg-cream pb-32 text-ink">
+        <header class="sticky top-0 z-20 bg-cream/90 backdrop-blur-md">
+            <div class="mx-auto max-w-2xl px-3 pt-3">
+                <div class="flex items-center gap-2 rounded-full border border-rule bg-cream-soft px-3 py-2 shadow-tile">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-ink text-cream">
+                        <ChefHat class="size-4" />
+                    </span>
+                    <h1 class="line-clamp-1 flex-1 text-sm font-semibold">
+                        {{ session.recipe.title }}
+                    </h1>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <button
+                                type="button"
+                                class="grid size-8 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-ink/5"
+                            >
+                                <MoreVertical class="size-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem v-if="!isCompleted" @select="togglePause">
+                                <Pause v-if="!isPaused" class="size-4" />
+                                <Play v-else class="size-4" />
+                                {{ isPaused ? 'Hervat' : 'Pauzeer' }}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem @select="notesOpen = true">
+                                <MessageSquare class="size-4" /> Notitie toevoegen
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem class="text-destructive" @select="cancel">
+                                <X class="size-4" /> Sessie afbreken
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </header>
 
-        <main class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-3 py-4">
-            <section>
-                <div class="mb-2 flex items-baseline justify-between">
-                    <h2 class="text-lg font-semibold">Ingrediënten</h2>
-                    <span class="text-xs tabular-nums text-muted-foreground">
+        <main class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 px-3 pt-4">
+            <section
+                :class="[
+                    'rounded-3xl px-6 py-7 shadow-tile transition',
+                    isCompleted
+                        ? 'bg-block-lime text-ink'
+                        : isPaused
+                          ? 'bg-cream-soft text-ink'
+                          : 'bg-brand text-ink',
+                ]"
+            >
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/65">
+                            {{ isCompleted ? 'Voltooid in' : isPaused ? 'Gepauzeerd' : 'Bezig met koken' }}
+                        </p>
+                        <p class="mt-2 font-display text-6xl leading-none tabular-nums tracking-tight">
+                            {{ elapsedLive }}
+                        </p>
+                        <p
+                            v-if="isCompleted"
+                            class="mt-2 text-xs text-ink/65 tabular-nums"
+                        >
+                            {{ elapsedLabel }}
+                        </p>
+                    </div>
+                    <button
+                        v-if="!isCompleted"
+                        type="button"
+                        class="grid size-14 shrink-0 place-items-center rounded-full bg-ink text-cream shadow-tile transition active:scale-95"
+                        :title="isPaused ? 'Hervat' : 'Pauzeer'"
+                        :aria-label="isPaused ? 'Hervat' : 'Pauzeer'"
+                        @click="togglePause"
+                    >
+                        <Pause v-if="!isPaused" class="size-5 animate-pulse" />
+                        <Play v-else class="size-5" />
+                    </button>
+                    <span
+                        v-else
+                        class="grid size-14 shrink-0 place-items-center rounded-full bg-ink text-cream"
+                    >
+                        <Check class="size-6" />
+                    </span>
+                </div>
+
+                <div class="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-ink/10 px-3 py-2">
+                    <div>
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/65">
+                            Personen
+                        </p>
+                        <p class="font-display text-2xl tabular-nums leading-tight">
+                            {{ scaledServings }}
+                            <span class="text-xs text-ink/55">×{{ multiplier }}</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="grid size-10 place-items-center rounded-full bg-cream text-ink shadow-tile transition active:scale-95 disabled:opacity-40"
+                            :disabled="multiplier <= 0.25"
+                            @click="bumpMultiplier(-0.25)"
+                        >
+                            <Minus class="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            class="grid size-10 place-items-center rounded-full bg-cream text-ink shadow-tile transition active:scale-95"
+                            @click="bumpMultiplier(0.25)"
+                        >
+                            <Plus class="size-4" />
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+                <div class="mb-3 flex items-baseline justify-between">
+                    <h2 class="font-display text-2xl leading-tight">Ingrediënten</h2>
+                    <span class="text-[11px] font-semibold uppercase tracking-[0.18em] tabular-nums text-ink-faint">
                         {{ checkedIngredients.size }}/{{ totalIngredients }}
                     </span>
                 </div>
-                <div class="mb-3 h-1 overflow-hidden rounded-full bg-muted">
+                <div class="mb-4 h-1.5 overflow-hidden rounded-full bg-ink/10">
                     <div
-                        class="h-full bg-primary transition-all duration-200"
+                        class="h-full rounded-full bg-brand transition-all duration-300"
                         :style="{ width: `${ingredientPct}%` }"
                     />
                 </div>
@@ -333,7 +358,7 @@ function timerFinished(stepId: number): boolean {
                     >
                         <h3
                             v-if="group.section"
-                            class="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            class="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint"
                         >
                             {{ group.section }}
                         </h3>
@@ -341,12 +366,14 @@ function timerFinished(stepId: number): boolean {
                             <li
                                 v-for="ingredient in group.items"
                                 :key="ingredient.id"
-                                class="flex items-stretch gap-0 overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-                                :class="{ 'opacity-50': checkedIngredients.has(ingredient.id) }"
+                                :class="[
+                                    'flex items-stretch gap-0 overflow-hidden rounded-xl bg-cream transition',
+                                    checkedIngredients.has(ingredient.id) && 'opacity-50',
+                                ]"
                             >
                                 <button
                                     type="button"
-                                    class="flex shrink-0 items-center justify-center px-3 transition active:bg-muted"
+                                    class="flex shrink-0 items-center justify-center px-3 transition active:bg-ink/5"
                                     :aria-label="
                                         checkedIngredients.has(ingredient.id)
                                             ? `${ingredient.name} unmarken`
@@ -355,22 +382,24 @@ function timerFinished(stepId: number): boolean {
                                     @click="toggleIngredientCheck(ingredient.id)"
                                 >
                                     <span
-                                        class="flex size-7 items-center justify-center rounded-full border-2"
-                                        :class="
+                                        :class="[
+                                            'flex size-7 items-center justify-center rounded-full border-2 transition',
                                             checkedIngredients.has(ingredient.id)
-                                                ? 'border-primary bg-primary text-primary-foreground'
-                                                : 'border-input'
-                                        "
+                                                ? 'border-ink bg-ink text-cream'
+                                                : 'border-ink/25',
+                                        ]"
                                     >
                                         <Check v-if="checkedIngredients.has(ingredient.id)" class="size-4" />
                                     </span>
                                 </button>
                                 <div
-                                    class="flex flex-1 items-center gap-3 py-3 pr-3 text-sm"
-                                    :class="{ 'line-through': checkedIngredients.has(ingredient.id) }"
+                                    :class="[
+                                        'flex flex-1 items-center gap-3 py-3 pr-3 text-sm',
+                                        checkedIngredients.has(ingredient.id) && 'line-through',
+                                    ]"
                                 >
                                     <span class="flex-1">{{ ingredient.name }}</span>
-                                    <span class="shrink-0 text-muted-foreground tabular-nums">
+                                    <span class="shrink-0 font-semibold tabular-nums text-ink-soft">
                                         {{
                                             formatQuantity(ingredient.quantity, ingredient.unit, multiplier) ||
                                             ingredient.raw_text
@@ -383,16 +412,16 @@ function timerFinished(stepId: number): boolean {
                 </div>
             </section>
 
-            <section>
-                <div class="mb-2 flex items-baseline justify-between">
-                    <h2 class="text-lg font-semibold">Stappen</h2>
-                    <span class="text-xs tabular-nums text-muted-foreground">
+            <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+                <div class="mb-3 flex items-baseline justify-between">
+                    <h2 class="font-display text-2xl leading-tight">Stappen</h2>
+                    <span class="text-[11px] font-semibold uppercase tracking-[0.18em] tabular-nums text-ink-faint">
                         {{ checkedSteps.size }}/{{ totalSteps }}
                     </span>
                 </div>
-                <div class="mb-3 h-1 overflow-hidden rounded-full bg-muted">
+                <div class="mb-4 h-1.5 overflow-hidden rounded-full bg-ink/10">
                     <div
-                        class="h-full bg-primary transition-all duration-200"
+                        class="h-full rounded-full bg-brand transition-all duration-300"
                         :style="{ width: `${stepPct}%` }"
                     />
                 </div>
@@ -404,7 +433,7 @@ function timerFinished(stepId: number): boolean {
                     >
                         <h3
                             v-if="group.section"
-                            class="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            class="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint"
                         >
                             {{ group.section }}
                         </h3>
@@ -412,13 +441,15 @@ function timerFinished(stepId: number): boolean {
                             <li
                                 v-for="step in group.items"
                                 :key="step.id"
-                                class="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-                                :class="{ 'bg-muted/40': checkedSteps.has(step.id) }"
+                                :class="[
+                                    'rounded-2xl bg-cream transition',
+                                    checkedSteps.has(step.id) && 'opacity-60',
+                                ]"
                             >
                                 <div class="flex items-stretch gap-0">
                                     <button
                                         type="button"
-                                        class="flex shrink-0 items-start justify-center px-3 pt-3 transition active:bg-muted"
+                                        class="flex shrink-0 items-start justify-center px-3 pt-3 transition active:bg-ink/5"
                                         :aria-label="
                                             checkedSteps.has(step.id)
                                                 ? `Stap ${step.position} unmarken`
@@ -427,12 +458,12 @@ function timerFinished(stepId: number): boolean {
                                         @click="toggleStepCheck(step.id)"
                                     >
                                         <span
-                                            class="flex size-7 items-center justify-center rounded-full border-2 text-xs font-semibold"
-                                            :class="
+                                            :class="[
+                                                'flex size-8 items-center justify-center rounded-full text-sm font-semibold tabular-nums transition',
                                                 checkedSteps.has(step.id)
-                                                    ? 'border-primary bg-primary text-primary-foreground'
-                                                    : 'border-input'
-                                            "
+                                                    ? 'bg-ink text-cream'
+                                                    : 'bg-block-lime text-ink',
+                                            ]"
                                         >
                                             <Check v-if="checkedSteps.has(step.id)" class="size-4" />
                                             <span v-else>{{ step.position }}</span>
@@ -440,10 +471,10 @@ function timerFinished(stepId: number): boolean {
                                     </button>
                                     <div class="flex flex-1 flex-col gap-2 py-3 pr-3">
                                         <p
-                                            class="whitespace-pre-line text-sm leading-relaxed"
-                                            :class="{
-                                                'text-muted-foreground line-through': checkedSteps.has(step.id),
-                                            }"
+                                            :class="[
+                                                'whitespace-pre-line text-sm leading-relaxed',
+                                                checkedSteps.has(step.id) && 'line-through text-ink-soft',
+                                            ]"
                                         >
                                             {{ step.body }}
                                         </p>
@@ -454,7 +485,7 @@ function timerFinished(stepId: number): boolean {
                                             <button
                                                 v-if="!timers.get(step.id)"
                                                 type="button"
-                                                class="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1 text-xs font-medium text-primary transition active:scale-95"
+                                                class="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-cream transition active:scale-95 hover:bg-[#3a2c24]"
                                                 @click="
                                                     startTimer(step.id, detectTimerMinutes(step.body)!)
                                                 "
@@ -464,12 +495,12 @@ function timerFinished(stepId: number): boolean {
                                             </button>
                                             <div
                                                 v-else
-                                                class="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold tabular-nums"
-                                                :class="
+                                                :class="[
+                                                    'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold tabular-nums shadow-tile',
                                                     timerFinished(step.id)
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'bg-primary/10 text-primary'
-                                                "
+                                                        ? 'bg-block-lime text-ink'
+                                                        : 'bg-brand text-ink',
+                                                ]"
                                             >
                                                 <Bell
                                                     v-if="timerFinished(step.id)"
@@ -479,7 +510,7 @@ function timerFinished(stepId: number): boolean {
                                                 <span>{{ timerLabel(step.id) }}</span>
                                                 <button
                                                     type="button"
-                                                    class="-mr-1 ml-1 flex size-5 items-center justify-center rounded-full hover:bg-foreground/10"
+                                                    class="-mr-1 ml-1 grid size-5 place-items-center rounded-full hover:bg-ink/10"
                                                     :aria-label="
                                                         timerFinished(step.id)
                                                             ? 'Sluiten'
@@ -502,21 +533,21 @@ function timerFinished(stepId: number): boolean {
 
         <button
             type="button"
-            class="fixed bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition active:scale-95"
+            class="fixed bottom-24 right-4 z-30 grid size-14 place-items-center rounded-full bg-ink text-cream shadow-tile transition active:scale-95 hover:bg-[#3a2c24]"
             :aria-label="notes ? 'Notitie bewerken' : 'Notitie toevoegen'"
             @click="notesOpen = true"
         >
             <MessageSquare class="size-5" />
             <span
                 v-if="notes"
-                class="absolute -right-0.5 -top-0.5 flex size-3 items-center justify-center rounded-full bg-primary"
+                class="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-brand"
             />
         </button>
 
         <Sheet v-model:open="notesOpen">
-            <SheetContent side="bottom" class="rounded-t-2xl">
+            <SheetContent side="bottom" class="rounded-t-3xl border-rule bg-cream-soft">
                 <SheetHeader class="text-left">
-                    <SheetTitle>Opmerkingen</SheetTitle>
+                    <SheetTitle class="font-display text-2xl">Opmerkingen</SheetTitle>
                     <SheetDescription>
                         Wat viel op? Wat ga je volgende keer anders doen?
                     </SheetDescription>
@@ -524,26 +555,24 @@ function timerFinished(stepId: number): boolean {
                 <textarea
                     v-model="notes"
                     autofocus
-                    class="mt-2 min-h-[160px] w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                    class="mt-3 min-h-[160px] w-full rounded-xl border border-rule bg-cream px-4 py-3 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
                     placeholder="Te zout, volgende keer minder bouillon..."
                 />
             </SheetContent>
         </Sheet>
 
-        <footer
-            class="sticky bottom-0 z-20 border-t border-sidebar-border/70 bg-background/90 px-3 py-3 backdrop-blur-md dark:border-sidebar-border"
-        >
+        <footer class="sticky bottom-0 z-20 bg-cream/90 px-3 py-3 backdrop-blur-md">
             <div class="mx-auto max-w-2xl">
-                <Button
+                <button
                     type="button"
-                    size="lg"
-                    class="h-12 w-full text-base"
+                    class="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand text-base font-semibold text-ink shadow-tile transition active:scale-[0.99] hover:bg-[#d35a31] disabled:opacity-50"
                     :disabled="isCompleted"
                     @click="completeAndExit"
                 >
-                    <BellOff v-if="isCompleted" class="size-4" />
+                    <Clock v-if="!isCompleted" class="size-5" />
+                    <BellOff v-else class="size-5" />
                     {{ isCompleted ? 'Voltooid' : 'Klaar met koken' }}
-                </Button>
+                </button>
             </div>
         </footer>
     </div>
