@@ -37,6 +37,15 @@ export type RecipeListFilters = {
     time: 'quick' | 'medium' | 'long' | null;
 };
 
+export type Paginated<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    next_page_url: string | null;
+    prev_page_url: string | null;
+    total?: number;
+};
+
 export type Recipe = {
     id: number;
     user_id: number;

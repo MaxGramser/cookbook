@@ -11,11 +11,11 @@ class HistoryController extends Controller
 {
     public function index(Request $request, FetchUserHistory $action): Response
     {
-        $history = $action->handle($request->user());
+        $user = $request->user();
 
         return Inertia::render('History', [
-            'sessions' => $history['cook'],
-            'grocerySessions' => $history['grocery'],
+            'sessions' => Inertia::scroll(fn () => $action->cookSessions($user)),
+            'grocerySessions' => Inertia::scroll(fn () => $action->grocerySessions($user)),
         ]);
     }
 }

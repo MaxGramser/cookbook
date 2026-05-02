@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ChefHat, Clock, MessageSquare, MoreVertical, Pencil, ShoppingBasket, Trash2 } from 'lucide-vue-next';
+import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
+import { ChefHat, Clock, Loader2, MessageSquare, MoreVertical, Pencil, ShoppingBasket, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import {
     DropdownMenu,
@@ -20,11 +20,11 @@ import { durationBetween, formatDuration } from '@/lib/duration';
 import { dashboard } from '@/routes';
 import { destroy as destroySession, update as updateSession } from '@/routes/cook';
 import { show as showRecipe } from '@/routes/recipes';
-import type { CookSessionSummary, GrocerySessionSummary } from '@/types/recipes';
+import type { CookSessionSummary, GrocerySessionSummary, Paginated } from '@/types/recipes';
 
 const props = defineProps<{
-    sessions: CookSessionSummary[];
-    grocerySessions: GrocerySessionSummary[];
+    sessions: Paginated<CookSessionSummary>;
+    grocerySessions: Paginated<GrocerySessionSummary>;
 }>();
 
 defineOptions({
@@ -32,11 +32,11 @@ defineOptions({
 });
 
 const totalCompleted = computed(
-    () => props.sessions.filter((s) => s.completed_at).length,
+    () => props.sessions.total ?? props.sessions.data.filter((s) => s.completed_at).length,
 );
 
 const totalGroceries = computed(
-    () => props.grocerySessions.filter((s) => s.completed_at).length,
+    () => props.grocerySessions.total ?? props.grocerySessions.data.filter((s) => s.completed_at).length,
 );
 
 function monthKey(value: string): string {
@@ -52,7 +52,7 @@ const months = computed(() => {
         { label: string; cook: CookSessionSummary[]; grocery: GrocerySessionSummary[] }
     >();
 
-    for (const session of props.sessions) {
+    for (const session of props.sessions.data) {
         if (!session.completed_at) {
             continue;
         }
@@ -66,7 +66,7 @@ const months = computed(() => {
         map.get(key)!.cook.push(session);
     }
 
-    for (const session of props.grocerySessions) {
+    for (const session of props.grocerySessions.data) {
         if (!session.completed_at) {
             continue;
         }
@@ -209,7 +209,7 @@ function deleteSession(session: CookSessionSummary): void {
         </div>
 
         <div
-            v-if="totalCompleted === 0 && totalGroceries === 0"
+            v-if="sessions.data.length === 0 && grocerySessions.data.length === 0"
             class="rounded-3xl border border-dashed border-rule bg-cream-soft p-12 text-center"
         >
             <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-ink text-cream">
@@ -221,11 +221,19 @@ function deleteSession(session: CookSessionSummary): void {
             </p>
         </div>
 
-        <div
-            v-for="(month, idx) in months"
-            :key="month.label"
-            :class="['relative overflow-hidden rounded-3xl p-5 md:p-6', monthBgClass[monthBlock(idx)]]"
+        <InfiniteScroll
+            v-else
+            data="sessions"
+            items-element="#history-months"
         >
+            <template #default>
+                <div id="history-months" class="flex flex-col gap-5 md:gap-6">
+                    <div
+                        v-for="(month, idx) in months"
+                        :key="month.label"
+                        :data-month="month.label"
+                        :class="['relative overflow-hidden rounded-3xl p-5 md:p-6', monthBgClass[monthBlock(idx)]]"
+                    >
             <div class="mb-5 flex items-baseline justify-between gap-3">
                 <h2 class="font-display text-3xl leading-tight capitalize md:text-4xl">
                     {{ month.label }}
@@ -350,6 +358,15 @@ function deleteSession(session: CookSessionSummary): void {
                 </ul>
             </div>
         </div>
+                </div>
+            </template>
+
+            <template #loading>
+                <div class="flex justify-center py-8 text-ink-faint">
+                    <Loader2 class="size-5 animate-spin" />
+                </div>
+            </template>
+        </InfiniteScroll>
     </div>
 
     <Sheet :open="editing !== null" @update:open="(v) => { if (!v) closeEditNote(); }">

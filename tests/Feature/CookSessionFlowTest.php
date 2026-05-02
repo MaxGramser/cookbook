@@ -132,7 +132,7 @@ test('history shows completed sessions only', function () {
     $response = $this->actingAs($user)->get('/history');
 
     $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->component('History')->has('sessions', 1)
+    $response->assertInertia(fn ($page) => $page->component('History')->has('sessions.data', 1)
     );
 });
 
@@ -145,8 +145,8 @@ test('history payload exposes started_at and completed_at for duration', functio
 
     $this->actingAs($user)
         ->get('/history')
-        ->assertInertia(fn ($page) => $page->has('sessions.0.started_at')
-            ->has('sessions.0.completed_at')
+        ->assertInertia(fn ($page) => $page->has('sessions.data.0.started_at')
+            ->has('sessions.data.0.completed_at')
         );
 });
 
@@ -159,7 +159,7 @@ test('history payload exposes notes for editing', function () {
 
     $this->actingAs($user)
         ->get('/history')
-        ->assertInertia(fn ($page) => $page->where('sessions.0.notes', 'Lekker, maar te zout')
+        ->assertInertia(fn ($page) => $page->where('sessions.data.0.notes', 'Lekker, maar te zout')
         );
 });
 

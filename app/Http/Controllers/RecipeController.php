@@ -25,19 +25,21 @@ class RecipeController extends Controller
             'time' => $request->string('time')->toString() ?: null,
         ];
 
-        $recipes = $search->handle($request->user(), $filters);
+        $user = $request->user();
 
         return Inertia::render('recipes/Index', [
-            'recipes' => $recipes->map(fn (Recipe $r) => [
-                'id' => $r->id,
-                'title' => $r->title,
-                'image_path' => $r->image_path,
-                'cook_time_minutes' => $r->cook_time_minutes,
-                'servings' => $r->servings,
-                'is_starred' => $r->starred_at !== null,
-                'cooked_count' => (int) $r->cooked_count,
-                'last_cooked_at' => $r->last_cooked_at,
-            ])->values(),
+            'recipes' => Inertia::scroll(
+                fn () => $search->handle($user, $filters)->through(fn (Recipe $r) => [
+                    'id' => $r->id,
+                    'title' => $r->title,
+                    'image_path' => $r->image_path,
+                    'cook_time_minutes' => $r->cook_time_minutes,
+                    'servings' => $r->servings,
+                    'is_starred' => $r->starred_at !== null,
+                    'cooked_count' => (int) $r->cooked_count,
+                    'last_cooked_at' => $r->last_cooked_at,
+                ]),
+            ),
             'filters' => [
                 'q' => $filters['q'],
                 'starred' => $filters['starred'],

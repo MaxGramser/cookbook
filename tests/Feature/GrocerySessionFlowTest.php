@@ -83,7 +83,7 @@ test('history exposes both cook and grocery sessions', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('History')
-            ->has('grocerySessions', 1)
+            ->has('grocerySessions.data', 1)
         );
 });
 

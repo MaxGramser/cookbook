@@ -5,34 +5,29 @@ namespace App\Actions\CookSessions;
 use App\Models\CookSession;
 use App\Models\GrocerySession;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class FetchUserHistory
 {
-    /**
-     * @return array{cook: Collection<int, CookSession>, grocery: Collection<int, GrocerySession>}
-     */
-    public function handle(User $user, int $limit = 200): array
+    public function cookSessions(User $user, int $perPage = 30): LengthAwarePaginator
     {
-        $cook = CookSession::query()
+        return CookSession::query()
             ->where('user_id', $user->id)
             ->whereNotNull('completed_at')
             ->with(['recipe:id,title,image_path'])
             ->orderByDesc('completed_at')
-            ->limit($limit)
-            ->get(['id', 'recipe_id', 'servings_multiplier', 'started_at', 'completed_at', 'notes']);
+            ->paginate($perPage, ['id', 'recipe_id', 'servings_multiplier', 'started_at', 'completed_at', 'notes'])
+            ->withQueryString();
+    }
 
-        $grocery = GrocerySession::query()
+    public function grocerySessions(User $user, int $perPage = 60): LengthAwarePaginator
+    {
+        return GrocerySession::query()
             ->where('user_id', $user->id)
             ->whereNotNull('completed_at')
             ->with(['recipe:id,title,image_path'])
             ->orderByDesc('completed_at')
-            ->limit($limit)
-            ->get(['id', 'recipe_id', 'phase', 'started_at', 'completed_at']);
-
-        return [
-            'cook' => $cook,
-            'grocery' => $grocery,
-        ];
+            ->paginate($perPage, ['id', 'recipe_id', 'phase', 'started_at', 'completed_at'], 'gpage')
+            ->withQueryString();
     }
 }

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, Link, router, usePage } from '@inertiajs/vue3';
 import {
     ChefHat,
     ChevronDown,
     ClipboardPaste,
     Clock,
     Link2,
+    Loader2,
     PencilLine,
     Plus,
     Search,
@@ -24,10 +25,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { dashboard } from '@/routes';
 import { create as createRecipe, index as recipesIndex, show as showRecipe } from '@/routes/recipes';
-import type { RecipeListFilters, RecipeSummary } from '@/types/recipes';
+import type { Paginated, RecipeListFilters, RecipeSummary } from '@/types/recipes';
 
 const props = defineProps<{
-    recipes: RecipeSummary[];
+    recipes: Paginated<RecipeSummary>;
     filters: RecipeListFilters;
 }>();
 
@@ -61,7 +62,6 @@ function applyFilters(replace = false): void {
         preserveState: true,
         preserveScroll: true,
         replace,
-        only: ['recipes', 'filters'],
     });
 }
 
@@ -93,7 +93,7 @@ function toggleStar(recipe: RecipeSummary, event: Event): void {
     router.post(
         RecipeController.toggleStar.url(recipe.id),
         {},
-        { preserveScroll: true, preserveState: true, only: ['recipes', 'filters'] },
+        { preserveScroll: true, preserveState: false },
     );
 }
 
@@ -266,7 +266,7 @@ const tileBgClass: Record<Tile, string> = {
         </div>
 
         <div
-            v-if="recipes.length === 0"
+            v-if="recipes.data.length === 0"
             class="rounded-3xl border border-dashed border-rule bg-cream-soft p-12 text-center"
         >
             <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-ink text-cream">
@@ -284,82 +284,96 @@ const tileBgClass: Record<Tile, string> = {
             </p>
         </div>
 
-        <div
+        <InfiniteScroll
             v-else
-            class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            data="recipes"
+            items-element="#recipes-grid"
         >
-            <Link
-                v-for="(recipe, idx) in recipes"
-                :key="recipe.id"
-                :href="showRecipe(recipe.id)"
-                class="group flex flex-col overflow-hidden rounded-3xl bg-cream-soft transition hover:-translate-y-1 hover:shadow-tile-hover"
-            >
-                <div class="relative aspect-[4/3] overflow-hidden bg-ink/5">
-                    <img
-                        v-if="recipe.image_path"
-                        :src="`/storage/${recipe.image_path}`"
-                        :alt="recipe.title"
-                        class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                    />
-                    <div
-                        v-else
-                        class="flex h-full w-full items-center justify-center text-ink-faint"
+            <template #default>
+                <div
+                    id="recipes-grid"
+                    class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                >
+                    <Link
+                        v-for="(recipe, idx) in recipes.data"
+                        :key="recipe.id"
+                        :href="showRecipe(recipe.id)"
+                        class="group flex flex-col overflow-hidden rounded-3xl bg-cream-soft transition hover:-translate-y-1 hover:shadow-tile-hover"
                     >
-                        <ChefHat class="size-10" />
-                    </div>
-                    <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
-                        <span
-                            v-if="recipe.cook_time_minutes"
-                            class="flex items-center gap-1 rounded-full bg-cream-soft/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums backdrop-blur"
-                        >
-                            <Clock class="size-3" /> {{ recipe.cook_time_minutes }}m
-                        </span>
-                        <span
-                            v-if="recipe.cooked_count > 0"
-                            class="flex items-center gap-1 rounded-full bg-ink/90 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-cream backdrop-blur"
-                        >
-                            <ChefHat class="size-3" /> ×{{ recipe.cooked_count }}
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        :aria-label="recipe.is_starred ? 'Ster verwijderen' : 'Markeer als favoriet'"
-                        :class="[
-                            'absolute right-3 top-3 grid size-9 place-items-center rounded-full backdrop-blur transition active:scale-90',
-                            recipe.is_starred
-                                ? 'bg-brand text-ink'
-                                : 'bg-cream-soft/90 text-ink-soft hover:bg-cream-soft',
-                        ]"
-                        @click="toggleStar(recipe, $event)"
-                    >
-                        <Star class="size-4" :fill="recipe.is_starred ? 'currentColor' : 'none'" />
-                    </button>
+                        <div class="relative aspect-[4/3] overflow-hidden bg-ink/5">
+                            <img
+                                v-if="recipe.image_path"
+                                :src="`/storage/${recipe.image_path}`"
+                                :alt="recipe.title"
+                                class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                            />
+                            <div
+                                v-else
+                                class="flex h-full w-full items-center justify-center text-ink-faint"
+                            >
+                                <ChefHat class="size-10" />
+                            </div>
+                            <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                                <span
+                                    v-if="recipe.cook_time_minutes"
+                                    class="flex items-center gap-1 rounded-full bg-cream-soft/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums backdrop-blur"
+                                >
+                                    <Clock class="size-3" /> {{ recipe.cook_time_minutes }}m
+                                </span>
+                                <span
+                                    v-if="recipe.cooked_count > 0"
+                                    class="flex items-center gap-1 rounded-full bg-ink/90 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-cream backdrop-blur"
+                                >
+                                    <ChefHat class="size-3" /> ×{{ recipe.cooked_count }}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                :aria-label="recipe.is_starred ? 'Ster verwijderen' : 'Markeer als favoriet'"
+                                :class="[
+                                    'absolute right-3 top-3 grid size-9 place-items-center rounded-full backdrop-blur transition active:scale-90',
+                                    recipe.is_starred
+                                        ? 'bg-brand text-ink'
+                                        : 'bg-cream-soft/90 text-ink-soft hover:bg-cream-soft',
+                                ]"
+                                @click="toggleStar(recipe, $event)"
+                            >
+                                <Star class="size-4" :fill="recipe.is_starred ? 'currentColor' : 'none'" />
+                            </button>
+                        </div>
+                        <div :class="['flex flex-1 flex-col gap-2 p-5', tileBgClass[tileColor(idx)]]">
+                            <div class="flex items-end gap-3">
+                                <h3 class="line-clamp-2 flex-1 font-display text-lg leading-tight">
+                                    {{ recipe.title }}
+                                </h3>
+                                <span
+                                    :class="[
+                                        'grid size-8 shrink-0 place-items-center rounded-full transition group-hover:rotate-12',
+                                        tileColor(idx) === 'ink'
+                                            ? 'bg-cream text-ink'
+                                            : 'bg-ink text-cream',
+                                    ]"
+                                >
+                                    <Plus class="size-4 rotate-45" />
+                                </span>
+                            </div>
+                            <p
+                                v-if="lastCookedLabel(recipe)"
+                                class="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70"
+                            >
+                                {{ lastCookedLabel(recipe) }}
+                            </p>
+                        </div>
+                    </Link>
                 </div>
-                <div :class="['flex flex-1 flex-col gap-2 p-5', tileBgClass[tileColor(idx)]]">
-                    <div class="flex items-end gap-3">
-                        <h3 class="line-clamp-2 flex-1 font-display text-lg leading-tight">
-                            {{ recipe.title }}
-                        </h3>
-                        <span
-                            :class="[
-                                'grid size-8 shrink-0 place-items-center rounded-full transition group-hover:rotate-12',
-                                tileColor(idx) === 'ink'
-                                    ? 'bg-cream text-ink'
-                                    : 'bg-ink text-cream',
-                            ]"
-                        >
-                            <Plus class="size-4 rotate-45" />
-                        </span>
-                    </div>
-                    <p
-                        v-if="lastCookedLabel(recipe)"
-                        class="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70"
-                    >
-                        {{ lastCookedLabel(recipe) }}
-                    </p>
+            </template>
+
+            <template #loading>
+                <div class="flex justify-center py-8 text-ink-faint">
+                    <Loader2 class="size-5 animate-spin" />
                 </div>
-            </Link>
-        </div>
+            </template>
+        </InfiniteScroll>
 
         <ImportUrlDialog v-model:open="urlOpen" />
         <PasteRecipeDialog v-model:open="pasteOpen" />

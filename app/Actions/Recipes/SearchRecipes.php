@@ -2,17 +2,15 @@
 
 namespace App\Actions\Recipes;
 
-use App\Models\Recipe;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class SearchRecipes
 {
     /**
      * @param  array{q?: ?string, starred?: ?bool, cooked?: ?bool, time?: ?string}  $filters
-     * @return Collection<int, Recipe>
      */
-    public function handle(User $user, array $filters): Collection
+    public function handle(User $user, array $filters, int $perPage = 24): LengthAwarePaginator
     {
         $query = $user->recipes()->select([
             'id', 'title', 'image_path', 'cook_time_minutes', 'servings',
@@ -53,6 +51,7 @@ final class SearchRecipes
             ->orderByRaw('last_cooked_at IS NULL')
             ->orderByDesc('last_cooked_at')
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
     }
 }
