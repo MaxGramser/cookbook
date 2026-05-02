@@ -111,7 +111,7 @@ final class UnitConverter
         return match ($canonicalUnit) {
             Unit::GRAM, Unit::MILLILITER => $value >= 10 ? round($value) : round($value, 1),
             Unit::TEASPOON, Unit::TABLESPOON => round($value * 8) / 8,
-            Unit::PIECE => round($value, 2),
+            Unit::PIECE => round($value),
             default => $value,
         };
     }

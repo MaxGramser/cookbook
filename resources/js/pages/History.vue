@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { Clock } from 'lucide-vue-next';
 import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
+import { durationBetween, formatDuration } from '@/lib/duration';
 import { dashboard } from '@/routes';
 import { show as showRecipe } from '@/routes/recipes';
 import type { CookSessionSummary } from '@/types/recipes';
@@ -34,6 +36,13 @@ function formatDate(value: string): string {
         day: 'numeric',
         month: 'short',
     }).format(new Date(value));
+}
+
+function sessionDuration(session: CookSessionSummary): string | null {
+    if (!session.started_at || !session.completed_at) {
+        return null;
+    }
+    return formatDuration(durationBetween(session.started_at, session.completed_at));
 }
 </script>
 
@@ -68,8 +77,13 @@ function formatDate(value: string): string {
                         </div>
                         <div class="min-w-0 flex-1">
                             <p class="line-clamp-1 font-medium">{{ session.recipe.title }}</p>
-                            <p class="text-xs text-muted-foreground">
-                                {{ formatDate(session.completed_at!) }} · ×{{ session.servings_multiplier }}
+                            <p class="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{{ formatDate(session.completed_at!) }}</span>
+                                <span>·</span>
+                                <span>×{{ session.servings_multiplier }}</span>
+                                <span v-if="sessionDuration(session)" class="flex items-center gap-1">
+                                    · <Clock class="size-3" /> {{ sessionDuration(session) }}
+                                </span>
                             </p>
                         </div>
                     </Link>

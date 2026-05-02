@@ -22,6 +22,12 @@ final class RecipeHtmlStripper
      */
     public static function strip(string $html): array
     {
+        // Many recipe plugins (WPRM, Tasty, etc.) render the servings count
+        // as `<input value="4">`. textContent does not include attribute
+        // values, so we splice the value into the markup before parsing so
+        // the count survives into the readable text.
+        $html = self::inlineInputValues($html);
+
         $previous = libxml_use_internal_errors(true);
         $doc = new DOMDocument;
         $doc->loadHTML('<?xml encoding="UTF-8">'.$html);
@@ -29,16 +35,28 @@ final class RecipeHtmlStripper
         libxml_use_internal_errors($previous);
 
         $jsonLd = self::findRecipeJsonLd($doc);
+        $readable = self::extractReadableText($doc);
+
         if ($jsonLd !== null) {
+            $text = self::summarizeJsonLd($jsonLd);
+            if ($readable !== '') {
+                // Cap at ~6k chars so we don't blow up the prompt for huge blog
+                // posts. Recipe details are usually near the top.
+                $text .= "\n\n--- Visible page text (use this to fill gaps or"
+                    ." correct wrong JSON-LD values, e.g. servings sometimes"
+                    ." default to '1 serving' on WordPress sites) ---\n"
+                    .mb_substr($readable, 0, 6000);
+            }
+
             return [
-                'text' => self::summarizeJsonLd($jsonLd),
+                'text' => $text,
                 'image_url' => self::extractJsonLdImage($jsonLd),
                 'json_ld' => $jsonLd,
             ];
         }
 
         return [
-            'text' => self::extractReadableText($doc),
+            'text' => $readable,
             'image_url' => self::extractFallbackImage($doc),
             'json_ld' => null,
         ];
@@ -283,6 +301,19 @@ final class RecipeHtmlStripper
         $text = preg_replace('/\n{3,}/', "\n\n", $text) ?? '';
 
         return trim($text);
+    }
+
+    private static function inlineInputValues(string $html): string
+    {
+        return preg_replace_callback(
+            '/<input\b[^>]*\bvalue\s*=\s*("([^"]*)"|\'([^\']*)\')[^>]*>/i',
+            function (array $m): string {
+                $value = $m[2] ?? $m[3] ?? '';
+
+                return $m[0].' '.$value.' ';
+            },
+            $html,
+        ) ?? $html;
     }
 
     private static function extractFallbackImage(DOMDocument $doc): ?string

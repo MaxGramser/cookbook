@@ -17,7 +17,7 @@ class HistoryController extends Controller
             ->with(['recipe:id,title,image_path'])
             ->orderByDesc('completed_at')
             ->limit(200)
-            ->get(['id', 'recipe_id', 'servings_multiplier', 'completed_at']);
+            ->get(['id', 'recipe_id', 'servings_multiplier', 'started_at', 'completed_at', 'notes']);
 
         return Inertia::render('History', [
             'sessions' => $sessions,

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { Check, ChefHat, Minus, Plus } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { Check, ChefHat, Clock, Minus, Plus } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
+import { durationBetween, formatDuration, formatStopwatch } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import {
@@ -33,6 +34,30 @@ const totalSteps = computed(() => props.session.recipe.steps.length);
 const isCompleted = computed(() => props.session.completed_at !== null);
 const ingredientGroups = computed(() => groupBySection(props.session.recipe.ingredients));
 const stepGroups = computed(() => groupBySection(props.session.recipe.steps));
+
+const now = ref<number>(Date.now());
+let tick: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    if (!isCompleted.value) {
+        tick = setInterval(() => {
+            now.value = Date.now();
+        }, 1000);
+    }
+});
+onBeforeUnmount(() => {
+    if (tick !== null) {
+        clearInterval(tick);
+    }
+});
+
+const elapsedMs = computed(() =>
+    isCompleted.value
+        ? durationBetween(props.session.started_at, props.session.completed_at)
+        : Math.max(0, now.value - new Date(props.session.started_at).getTime()),
+);
+const elapsedLive = computed(() => formatStopwatch(elapsedMs.value));
+const elapsedLabel = computed(() => formatDuration(elapsedMs.value));
 
 function bumpMultiplier(delta: number): void {
     const stepped = Math.round((multiplier.value + delta) * 4) / 4;
@@ -112,6 +137,18 @@ function cancel(): void {
             <div class="flex items-center gap-3 px-4 py-3">
                 <ChefHat class="size-5 text-muted-foreground" />
                 <h1 class="line-clamp-1 flex-1 font-semibold">{{ session.recipe.title }}</h1>
+                <div
+                    class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-base font-semibold tabular-nums"
+                    :class="
+                        isCompleted
+                            ? 'bg-muted text-muted-foreground'
+                            : 'bg-primary text-primary-foreground'
+                    "
+                    :title="isCompleted ? `Voltooid in ${elapsedLabel}` : 'Tijd sinds start'"
+                >
+                    <Clock class="size-4" :class="{ 'animate-pulse': !isCompleted }" />
+                    <span>{{ elapsedLive }}</span>
+                </div>
             </div>
             <div class="flex items-center gap-2 px-4 pb-3">
                 <span class="text-sm text-muted-foreground">Personen</span>

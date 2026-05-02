@@ -5,6 +5,7 @@ import CookSessionController from '@/actions/App/Http/Controllers/CookSessionCon
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
@@ -27,6 +28,13 @@ function confirmDelete(event: Event): void {
     if (!window.confirm('Recept verwijderen?')) {
         event.preventDefault();
     }
+}
+
+function sessionDuration(session: CookSessionSummary): string | null {
+    if (!session.started_at || !session.completed_at) {
+        return null;
+    }
+    return formatDuration(durationBetween(session.started_at, session.completed_at));
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -164,10 +172,13 @@ function formatDate(value: string | null | undefined): string {
                         <li
                             v-for="session in recentSessions"
                             :key="session.id"
-                            class="flex justify-between border-t py-2 first:border-t-0"
+                            class="flex justify-between gap-3 border-t py-2 first:border-t-0"
                         >
-                            <span>{{ formatDate(session.completed_at ?? session.started_at) }}</span>
-                            <span>×{{ session.servings_multiplier }}</span>
+                            <span class="flex-1">{{ formatDate(session.completed_at ?? session.started_at) }}</span>
+                            <span v-if="sessionDuration(session)" class="tabular-nums">
+                                {{ sessionDuration(session) }}
+                            </span>
+                            <span class="tabular-nums">×{{ session.servings_multiplier }}</span>
                         </li>
                     </ul>
                 </section>

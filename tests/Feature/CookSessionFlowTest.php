@@ -90,6 +90,20 @@ test('history shows completed sessions only', function () {
     );
 });
 
+test('history payload exposes started_at and completed_at for duration', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    CookSession::factory()->for($recipe)->for($user)->completed()->create([
+        'started_at' => now()->subMinutes(45),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/history')
+        ->assertInertia(fn ($page) => $page->has('sessions.0.started_at')
+            ->has('sessions.0.completed_at')
+        );
+});
+
 test('user cannot access another users session', function () {
     $owner = User::factory()->create(['email_verified_at' => now()]);
     $other = User::factory()->create(['email_verified_at' => now()]);
