@@ -12,6 +12,7 @@ import {
     Scale,
     Timer,
 } from 'lucide-vue-next';
+import ActiveCookSessionPill from '@/components/ActiveCookSessionPill.vue';
 import { dashboard, login, register } from '@/routes';
 
 withDefaults(
@@ -483,5 +484,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                 <span class="text-ink-faint">v1</span>
             </div>
         </footer>
+
+        <ActiveCookSessionPill />
     </div>
 </template>

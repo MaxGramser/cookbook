@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ActiveCookSessionPill from '@/components/ActiveCookSessionPill.vue';
 import AppContent from '@/components/AppContent.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
@@ -22,6 +23,7 @@ withDefaults(defineProps<Props>(), {
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />
             <slot />
         </AppContent>
+        <ActiveCookSessionPill />
         <Toaster />
     </AppShell>
 </template>

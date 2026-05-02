@@ -13,12 +13,20 @@ declare module 'vite/client' {
     }
 }
 
+export type ActiveCookSession = {
+    id: number;
+    recipe_title: string;
+    started_at: string;
+    paused_at: string | null;
+};
+
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            activeCookSession: ActiveCookSession | null;
             [key: string]: unknown;
         };
     }

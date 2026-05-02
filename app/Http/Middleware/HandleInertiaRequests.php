@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CookSession;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,36 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'activeCookSession' => fn () => $this->activeCookSession($request),
+        ];
+    }
+
+    /**
+     * @return array{id: int, recipe_title: string, started_at: string, paused_at: string|null}|null
+     */
+    private function activeCookSession(Request $request): ?array
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        $session = CookSession::query()
+            ->where('user_id', $user->id)
+            ->whereNull('completed_at')
+            ->with('recipe:id,title')
+            ->latest('started_at')
+            ->first();
+
+        if ($session === null || $session->recipe === null) {
+            return null;
+        }
+
+        return [
+            'id' => $session->id,
+            'recipe_title' => $session->recipe->title,
+            'started_at' => $session->started_at?->toIso8601String() ?? '',
+            'paused_at' => $session->paused_at?->toIso8601String(),
         ];
     }
 }

@@ -269,7 +269,7 @@ function timerFinished(stepId: number): boolean {
                     isCompleted
                         ? 'bg-block-lime text-ink'
                         : isPaused
-                          ? 'bg-cream-soft text-ink'
+                          ? 'bg-block-sky text-ink'
                           : 'bg-brand text-ink',
                 ]"
             >
