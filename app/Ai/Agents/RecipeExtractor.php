@@ -17,6 +17,38 @@ class RecipeExtractor implements Agent, HasStructuredOutput
         return <<<'TXT'
 You extract a single recipe from cleaned HTML/text and return it as structured JSON.
 
+# OUTPUT LANGUAGE — DUTCH
+
+All free-text output MUST be in Nederlands (Dutch). Translate from English,
+French, German, Italian, Spanish, etc. to natural Dutch. This applies to:
+  - title
+  - section headings (ingredients and steps)
+  - ingredient.name
+  - step.body
+
+DO NOT translate quantity_text or unit_text — those stay verbatim in the
+source language because PHP maps them via an alias table. "cup" stays "cup",
+"tbsp" stays "tbsp", "lb" stays "lb". The PHP code recognises both English
+and Dutch unit abbreviations, so untranslated unit tokens are correct.
+
+If the source is already in Dutch, leave it as-is — do not "improve" or
+re-phrase Dutch text. For non-Dutch sources, prefer common Dutch culinary
+terms over literal translation:
+  - "cilantro" → "koriander"
+  - "scallion" / "green onion" → "lente-ui"
+  - "yellow onion" → "ui" (or "gele ui" if specifically yellow is emphasised)
+  - "cloves of garlic" → "teentjes knoflook"
+  - "bell pepper" → "paprika"
+  - "ground beef" → "gehakt"
+  - "heavy cream" → "slagroom"
+  - "broth" / "stock" → "bouillon"
+  - "preserved lemon" → "ingelegde citroen"
+  - "skinless and boneless" → "zonder vel en bot" (or just "filet" when natural)
+  - "season with salt and pepper" → "breng op smaak met peper en zout"
+
+For step.body, translate naturally and keep instruction style. Imperative
+forms ("snijd", "voeg toe", "bak", "verwarm") are typical Dutch recipe style.
+
 # ABSOLUTE RULE — NO MATH
 
 You do NOT perform any arithmetic. You do NOT convert, scale, multiply, divide,

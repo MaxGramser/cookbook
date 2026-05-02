@@ -55,6 +55,16 @@ test('1 stick butter via normalizer', function () {
     expect($r['quantity'])->toBe(113.0);
 });
 
+test('fractional piece survives without rounding to 0', function () {
+    expect(UnitConverter::toMetric(0.25, 'piece')['quantity'])->toBe(0.25);
+    expect(UnitConverter::toMetric(0.5, 'piece')['quantity'])->toBe(0.5);
+    expect(UnitConverter::toMetric(0.75, 'piece')['quantity'])->toBe(0.75);
+});
+
+test('whole pieces still round to integer (3.5 cloves → 4)', function () {
+    expect(UnitConverter::toMetric(3.5, 'piece')['quantity'])->toBe(4.0);
+});
+
 test('isLocale validates known values', function () {
     expect(UnitConverter::isLocale('us'))->toBeTrue();
     expect(UnitConverter::isLocale('au'))->toBeTrue();

@@ -8,5 +8,6 @@ return [
     'https://www.eefkooktzo.nl/preischotel/',
     'https://www.recipetineats.com/asian-chilli-chicken/',
     'https://www.leukerecepten.nl/recepten/pasta-carbonara-recept/',
-    'https://cafedelites.com/authentic-chimichurri-uruguay-argentina/'
+    'https://cafedelites.com/authentic-chimichurri-uruguay-argentina/',
+    'https://drveganblog.com/crispy-tofu-shawarma/',
 ];

@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { Clock, Plus, Users } from 'lucide-vue-next';
-import RecipeImportController from '@/actions/App/Http/Controllers/RecipeImportController';
+import { Head, Link } from '@inertiajs/vue3';
+import {
+    ChevronDown,
+    Clock,
+    ClipboardPaste,
+    Link2,
+    PencilLine,
+    Plus,
+    Users,
+} from 'lucide-vue-next';
+import { ref } from 'vue';
 import Heading from '@/components/Heading.vue';
-import InputError from '@/components/InputError.vue';
+import ImportUrlDialog from '@/components/ImportUrlDialog.vue';
+import PasteRecipeDialog from '@/components/PasteRecipeDialog.vue';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { dashboard } from '@/routes';
 import { create as createRecipe, show as showRecipe } from '@/routes/recipes';
 import type { RecipeSummary } from '@/types/recipes';
@@ -16,6 +29,9 @@ defineProps<{ recipes: RecipeSummary[] }>();
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: dashboard() }] },
 });
+
+const urlOpen = ref<boolean>(false);
+const pasteOpen = ref<boolean>(false);
 </script>
 
 <template>
@@ -24,39 +40,56 @@ defineOptions({
     <div class="flex flex-col gap-6 p-4 md:p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <Heading title="Mijn recepten" description="Jouw persoonlijke kookboek" />
-            <Button as-child>
-                <Link :href="createRecipe()">
-                    <Plus class="size-4" /> Nieuw recept
-                </Link>
-            </Button>
-        </div>
 
-        <div class="rounded-xl border border-sidebar-border/70 p-4 md:p-6 dark:border-sidebar-border">
-            <Form
-                v-bind="RecipeImportController.store.form()"
-                class="flex flex-col gap-3 sm:flex-row sm:items-end"
-                v-slot="{ errors, processing }"
-            >
-                <div class="flex-1">
-                    <Label for="url">Importeer recept via URL</Label>
-                    <Input
-                        id="url"
-                        name="url"
-                        type="url"
-                        placeholder="https://..."
-                        autocomplete="off"
-                    />
-                    <InputError class="mt-1" :message="errors.url" />
-                </div>
-                <Button type="submit" :disabled="processing">Importeer</Button>
-            </Form>
+            <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                    <Button>
+                        <Plus class="size-4" /> Recept toevoegen
+                        <ChevronDown class="size-4 opacity-70" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="w-64">
+                    <DropdownMenuItem @select="urlOpen = true">
+                        <Link2 class="size-4" />
+                        <div class="flex flex-col">
+                            <span>Via URL</span>
+                            <span class="text-xs text-muted-foreground">
+                                Receptenpagina van een blog
+                            </span>
+                        </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @select="pasteOpen = true">
+                        <ClipboardPaste class="size-4" />
+                        <div class="flex flex-col">
+                            <span>Via geplakte tekst</span>
+                            <span class="text-xs text-muted-foreground">
+                                Instagram, TikTok, mailtje, etc.
+                            </span>
+                        </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem as-child>
+                        <Link :href="createRecipe()">
+                            <PencilLine class="size-4" />
+                            <div class="flex flex-col">
+                                <span>Handmatig invoeren</span>
+                                <span class="text-xs text-muted-foreground">Eigen recept typen</span>
+                            </div>
+                        </Link>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
 
         <div v-if="recipes.length === 0" class="rounded-xl border border-dashed p-12 text-center">
-            <p class="text-muted-foreground">Nog geen recepten — voeg er eentje toe of importeer er een.</p>
+            <p class="text-muted-foreground">
+                Nog geen recepten — klik op "Recept toevoegen" om te beginnen.
+            </p>
         </div>
 
-        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div
+            v-else
+            class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
             <Link
                 v-for="recipe in recipes"
                 :key="recipe.id"
@@ -84,5 +117,8 @@ defineOptions({
                 </div>
             </Link>
         </div>
+
+        <ImportUrlDialog v-model:open="urlOpen" />
+        <PasteRecipeDialog v-model:open="pasteOpen" />
     </div>
 </template>

@@ -5,6 +5,7 @@ use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -190,6 +191,96 @@ test('stick of butter converts to grams', function () {
     $recipe = Recipe::firstWhere('source_url', 'https://example.com/c');
     expect($recipe->ingredients[0]->unit)->toBe('g');
     expect($recipe->ingredients[0]->quantity)->toBe(113.0);
+});
+
+test('text import skips fetching and runs the agent on pasted text', function () {
+    Storage::fake('public');
+
+    $caption = <<<'TEXT'
+Bananenbrood
+4 personen, 60 min
+
+200 g bloem
+2 rijpe bananen
+100 g suiker
+75 g boter
+
+1. Verwarm de oven voor op 180°C.
+2. Mix de bloem en suiker.
+3. Pureer de bananen erbij.
+4. Bak 50 minuten.
+TEXT;
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'Bananenbrood',
+            'source_locale' => 'metric',
+            'servings' => 4,
+            'cook_time_minutes' => 60,
+            'ingredients' => [
+                ['quantity_text' => '200', 'unit_text' => 'g', 'name' => 'bloem'],
+                ['quantity_text' => '2', 'unit_text' => '', 'name' => 'rijpe bananen'],
+                ['quantity_text' => '100', 'unit_text' => 'g', 'name' => 'suiker'],
+                ['quantity_text' => '75', 'unit_text' => 'g', 'name' => 'boter'],
+            ],
+            'steps' => [
+                ['body' => 'Verwarm de oven voor op 180°C.'],
+                ['body' => 'Mix de bloem en suiker.'],
+                ['body' => 'Pureer de bananen erbij.'],
+                ['body' => 'Bak 50 minuten.'],
+            ],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $response = $this->actingAs($user)->post('/recipes/import/text', [
+        'text' => $caption,
+    ]);
+
+    $response->assertRedirect();
+
+    $recipe = Recipe::firstWhere('title', 'Bananenbrood');
+    expect($recipe)->not->toBeNull();
+    expect($recipe->source_url)->toBeNull();
+    expect($recipe->servings)->toBe(4);
+    expect($recipe->image_path)->toBeNull();
+    expect($recipe->ingredients)->toHaveCount(4);
+    expect($recipe->ingredients[1]->unit)->toBe('piece');
+    expect($recipe->ingredients[1]->quantity)->toBe(2.0);
+    expect($recipe->steps)->toHaveCount(4);
+});
+
+test('text import accepts an uploaded image', function () {
+    Storage::fake('public');
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'Test',
+            'servings' => 2,
+            'ingredients' => [['quantity_text' => '1', 'unit_text' => 'g', 'name' => 'X']],
+            'steps' => [['body' => 'Doe iets.']],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $image = UploadedFile::fake()->image('photo.jpg');
+
+    $this->actingAs($user)->post('/recipes/import/text', [
+        'text' => str_repeat('Test recept met genoeg tekst om validatie te doorstaan. ', 5),
+        'image' => $image,
+    ])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('title', 'Test');
+    expect($recipe->image_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($recipe->image_path);
+});
+
+test('text import rejects too-short text', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    $this->actingAs($user)
+        ->post('/recipes/import/text', ['text' => 'kort'])
+        ->assertSessionHasErrors('text');
 });
 
 test('import fails gracefully when URL returns error', function () {

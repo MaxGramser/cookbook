@@ -16,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('recipes', RecipeController::class);
     Route::post('recipes/import', [RecipeImportController::class, 'store'])->name('recipes.import');
+    Route::post('recipes/import/text', [RecipeImportController::class, 'storeFromText'])->name('recipes.import.text');
 
     Route::post('recipes/{recipe}/cook', [CookSessionController::class, 'store'])->name('cook.start');
     Route::get('cook/{session}', [CookSessionController::class, 'show'])->name('cook.show');
