@@ -1,0 +1,67 @@
+export type Unit = 'g' | 'ml' | 'tsp' | 'tbsp' | 'piece' | null;
+
+export type RecipeIngredient = {
+    id: number;
+    recipe_id: number;
+    position: number;
+    name: string;
+    quantity: number | null;
+    unit: Unit;
+    raw_text: string | null;
+};
+
+export type RecipeStep = {
+    id: number;
+    recipe_id: number;
+    position: number;
+    body: string;
+};
+
+export type RecipeSummary = {
+    id: number;
+    title: string;
+    image_path: string | null;
+    cook_time_minutes: number | null;
+    servings: number;
+};
+
+export type Recipe = {
+    id: number;
+    user_id: number;
+    title: string;
+    source_url: string | null;
+    image_path: string | null;
+    servings: number;
+    cook_time_minutes: number | null;
+    notes: string | null;
+    ingredients: RecipeIngredient[];
+    steps: RecipeStep[];
+};
+
+export type CookSessionDetail = {
+    id: number;
+    servings_multiplier: number;
+    notes: string | null;
+    started_at: string;
+    completed_at: string | null;
+    recipe: {
+        id: number;
+        title: string;
+        image_path: string | null;
+        servings: number;
+        cook_time_minutes: number | null;
+        ingredients: RecipeIngredient[];
+        steps: RecipeStep[];
+    };
+    checked_ingredient_ids: number[];
+    checked_step_ids: number[];
+};
+
+export type CookSessionSummary = {
+    id: number;
+    recipe_id: number;
+    servings_multiplier: number;
+    completed_at: string | null;
+    started_at?: string;
+    recipe?: { id: number; title: string; image_path: string | null };
+};
