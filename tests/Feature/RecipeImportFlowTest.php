@@ -77,6 +77,121 @@ test('importing a recipe URL stores a metric recipe and downloads its image', fu
     Http::assertSent(fn (HttpRequest $r) => $r->url() === 'https://example.com/recipe');
 });
 
+test('importer preserves section headings on ingredients and steps', function () {
+    Storage::fake('public');
+
+    Http::fake([
+        'example.com/sectioned' => Http::response(
+            '<html><body><script type="application/ld+json">'.json_encode([
+                '@type' => 'Recipe',
+                'name' => 'Layered Cake',
+                'recipeIngredient' => ['200 g flour', '50 g sugar'],
+                'recipeInstructions' => [['@type' => 'HowToStep', 'text' => 'Mix.']],
+            ]).'</script></body></html>',
+            200,
+            ['Content-Type' => 'text/html'],
+        ),
+    ]);
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'Layered Cake',
+            'servings' => 8,
+            'ingredients' => [
+                ['section' => 'For the dough', 'quantity_text' => '200', 'unit_text' => 'g', 'name' => 'flour'],
+                ['section' => 'For the dough', 'quantity_text' => '2', 'unit_text' => '', 'name' => 'eggs'],
+                ['section' => 'For the frosting', 'quantity_text' => '100', 'unit_text' => 'g', 'name' => 'butter'],
+            ],
+            'steps' => [
+                ['section' => 'Dough', 'body' => 'Combine flour and eggs.'],
+                ['section' => 'Frosting', 'body' => 'Whip butter.'],
+                ['section' => 'Assemble', 'body' => 'Stack and frost.'],
+            ],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $this->actingAs($user)->post('/recipes/import', ['url' => 'https://example.com/sectioned'])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('source_url', 'https://example.com/sectioned');
+    $sections = $recipe->ingredients->pluck('section')->all();
+    expect($sections)->toBe(['For the dough', 'For the dough', 'For the frosting']);
+    expect($recipe->steps->pluck('section')->all())->toBe(['Dough', 'Frosting', 'Assemble']);
+});
+
+test('AU recipes apply 250ml cup via source_locale hint', function () {
+    Storage::fake('public');
+
+    Http::fake([
+        'recipetineats.com/*' => Http::response('<html><body>Australian recipe</body></html>', 200),
+    ]);
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'Aussie Bickies',
+            'source_locale' => 'au',
+            'servings' => 12,
+            'ingredients' => [
+                ['quantity_text' => '1', 'unit_text' => 'cup', 'name' => 'flour'],
+                ['quantity_text' => '2', 'unit_text' => 'cups', 'name' => 'milk'],
+            ],
+            'steps' => [['body' => 'Mix.']],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $this->actingAs($user)->post('/recipes/import', [
+        'url' => 'https://recipetineats.com/test',
+    ])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('source_url', 'https://recipetineats.com/test');
+    expect($recipe->ingredients[0]->quantity)->toBe(250.0); // AU cup = 250 ml, not US 237
+    expect($recipe->ingredients[1]->quantity)->toBe(500.0);
+});
+
+test('US recipes still use 236.588 ml cup by default', function () {
+    Storage::fake('public');
+    Http::fake(['*' => Http::response('<html><body>doc</body></html>', 200)]);
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'NY Pancakes',
+            'source_locale' => 'us',
+            'servings' => 4,
+            'ingredients' => [['quantity_text' => '1', 'unit_text' => 'cup', 'name' => 'flour']],
+            'steps' => [['body' => 'Mix.']],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $this->actingAs($user)->post('/recipes/import', ['url' => 'https://nytimes.com/r'])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('source_url', 'https://nytimes.com/r');
+    expect($recipe->ingredients[0]->quantity)->toBe(237.0);
+});
+
+test('stick of butter converts to grams', function () {
+    Storage::fake('public');
+    Http::fake(['*' => Http::response('<html><body>doc</body></html>', 200)]);
+
+    RecipeExtractor::fake([
+        [
+            'title' => 'Cookies',
+            'source_locale' => 'us',
+            'servings' => 24,
+            'ingredients' => [['quantity_text' => '1', 'unit_text' => 'stick', 'name' => 'unsalted butter']],
+            'steps' => [['body' => 'Cream.']],
+        ],
+    ]);
+
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $this->actingAs($user)->post('/recipes/import', ['url' => 'https://example.com/c'])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('source_url', 'https://example.com/c');
+    expect($recipe->ingredients[0]->unit)->toBe('g');
+    expect($recipe->ingredients[0]->quantity)->toBe(113.0);
+});
+
 test('import fails gracefully when URL returns error', function () {
     Http::fake([
         'example.com/*' => Http::response('not found', 404),

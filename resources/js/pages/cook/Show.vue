@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { Check, ChefHat, Minus, Plus } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
+import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import {
     complete as completeSession,
@@ -30,6 +31,8 @@ const scaledServings = computed(() => Math.round(baseServings * multiplier.value
 const totalIngredients = computed(() => props.session.recipe.ingredients.length);
 const totalSteps = computed(() => props.session.recipe.steps.length);
 const isCompleted = computed(() => props.session.completed_at !== null);
+const ingredientGroups = computed(() => groupBySection(props.session.recipe.ingredients));
+const stepGroups = computed(() => groupBySection(props.session.recipe.steps));
 
 function bumpMultiplier(delta: number): void {
     const stepped = Math.round((multiplier.value + delta) * 4) / 4;
@@ -148,34 +151,48 @@ function cancel(): void {
                         {{ checkedIngredients.size }}/{{ totalIngredients }}
                     </span>
                 </div>
-                <ul class="flex flex-col gap-1">
-                    <li v-for="ingredient in session.recipe.ingredients" :key="ingredient.id">
-                        <button
-                            type="button"
-                            class="flex w-full items-center gap-3 rounded-xl border border-sidebar-border/70 px-3 py-3 text-left transition active:scale-[0.99] dark:border-sidebar-border"
-                            :class="{ 'opacity-50 line-through': checkedIngredients.has(ingredient.id) }"
-                            @click="toggleIngredientCheck(ingredient.id)"
+                <div class="flex flex-col gap-3">
+                    <div
+                        v-for="(group, groupIdx) in ingredientGroups"
+                        :key="`ig-${groupIdx}`"
+                        class="flex flex-col gap-1"
+                    >
+                        <h3
+                            v-if="group.section"
+                            class="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                         >
-                            <span
-                                class="flex size-7 shrink-0 items-center justify-center rounded-full border"
-                                :class="
-                                    checkedIngredients.has(ingredient.id)
-                                        ? 'border-primary bg-primary text-primary-foreground'
-                                        : 'border-input'
-                                "
-                            >
-                                <Check v-if="checkedIngredients.has(ingredient.id)" class="size-4" />
-                            </span>
-                            <span class="flex-1 text-sm">{{ ingredient.name }}</span>
-                            <span class="shrink-0 text-sm text-muted-foreground tabular-nums">
-                                {{
-                                    formatQuantity(ingredient.quantity, ingredient.unit, multiplier) ||
-                                    ingredient.raw_text
-                                }}
-                            </span>
-                        </button>
-                    </li>
-                </ul>
+                            {{ group.section }}
+                        </h3>
+                        <ul class="flex flex-col gap-1">
+                            <li v-for="ingredient in group.items" :key="ingredient.id">
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-xl border border-sidebar-border/70 px-3 py-3 text-left transition active:scale-[0.99] dark:border-sidebar-border"
+                                    :class="{ 'opacity-50 line-through': checkedIngredients.has(ingredient.id) }"
+                                    @click="toggleIngredientCheck(ingredient.id)"
+                                >
+                                    <span
+                                        class="flex size-7 shrink-0 items-center justify-center rounded-full border"
+                                        :class="
+                                            checkedIngredients.has(ingredient.id)
+                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                : 'border-input'
+                                        "
+                                    >
+                                        <Check v-if="checkedIngredients.has(ingredient.id)" class="size-4" />
+                                    </span>
+                                    <span class="flex-1 text-sm">{{ ingredient.name }}</span>
+                                    <span class="shrink-0 text-sm text-muted-foreground tabular-nums">
+                                        {{
+                                            formatQuantity(ingredient.quantity, ingredient.unit, multiplier) ||
+                                            ingredient.raw_text
+                                        }}
+                                    </span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
             <section>
@@ -185,34 +202,48 @@ function cancel(): void {
                         {{ checkedSteps.size }}/{{ totalSteps }}
                     </span>
                 </div>
-                <ol class="flex flex-col gap-2">
-                    <li v-for="step in session.recipe.steps" :key="step.id">
-                        <button
-                            type="button"
-                            class="flex w-full items-start gap-3 rounded-xl border border-sidebar-border/70 px-3 py-3 text-left transition active:scale-[0.99] dark:border-sidebar-border"
-                            :class="{ 'opacity-60': checkedSteps.has(step.id) }"
-                            @click="toggleStepCheck(step.id)"
+                <div class="flex flex-col gap-3">
+                    <div
+                        v-for="(group, groupIdx) in stepGroups"
+                        :key="`sg-${groupIdx}`"
+                        class="flex flex-col gap-1"
+                    >
+                        <h3
+                            v-if="group.section"
+                            class="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                         >
-                            <span
-                                class="flex size-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium"
-                                :class="
-                                    checkedSteps.has(step.id)
-                                        ? 'border-primary bg-primary text-primary-foreground'
-                                        : 'border-input'
-                                "
-                            >
-                                <Check v-if="checkedSteps.has(step.id)" class="size-4" />
-                                <span v-else>{{ step.position }}</span>
-                            </span>
-                            <p
-                                class="flex-1 whitespace-pre-line text-sm"
-                                :class="{ 'line-through': checkedSteps.has(step.id) }"
-                            >
-                                {{ step.body }}
-                            </p>
-                        </button>
-                    </li>
-                </ol>
+                            {{ group.section }}
+                        </h3>
+                        <ol class="flex flex-col gap-2">
+                            <li v-for="step in group.items" :key="step.id">
+                                <button
+                                    type="button"
+                                    class="flex w-full items-start gap-3 rounded-xl border border-sidebar-border/70 px-3 py-3 text-left transition active:scale-[0.99] dark:border-sidebar-border"
+                                    :class="{ 'opacity-60': checkedSteps.has(step.id) }"
+                                    @click="toggleStepCheck(step.id)"
+                                >
+                                    <span
+                                        class="flex size-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium"
+                                        :class="
+                                            checkedSteps.has(step.id)
+                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                : 'border-input'
+                                        "
+                                    >
+                                        <Check v-if="checkedSteps.has(step.id)" class="size-4" />
+                                        <span v-else>{{ step.position }}</span>
+                                    </span>
+                                    <p
+                                        class="flex-1 whitespace-pre-line text-sm"
+                                        :class="{ 'line-through': checkedSteps.has(step.id) }"
+                                    >
+                                        {{ step.body }}
+                                    </p>
+                                </button>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
             </section>
 
             <section class="flex flex-col gap-2">

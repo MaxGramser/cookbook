@@ -154,7 +154,14 @@ final class RecipeHtmlStripper
             $lines[] = '';
             $lines[] = 'Instructions:';
             foreach (self::flattenInstructions($node['recipeInstructions']) as $step) {
-                $lines[] = '- '.$step;
+                if (is_array($step)) {
+                    $lines[] = '## '.$step['section'];
+                    foreach ($step['steps'] as $body) {
+                        $lines[] = '- '.$body;
+                    }
+                } else {
+                    $lines[] = '- '.$step;
+                }
             }
         }
 
@@ -162,7 +169,11 @@ final class RecipeHtmlStripper
     }
 
     /**
-     * @return list<string>
+     * Flatten a recipeInstructions tree into a list. HowToSection entries are
+     * preserved as ['section' => string, 'steps' => string[]] so the prompt
+     * receives the heading and can keep ingredients/steps grouped accordingly.
+     *
+     * @return list<string|array{section: string, steps: list<string>}>
      */
     private static function flattenInstructions(mixed $instructions): array
     {
@@ -185,7 +196,14 @@ final class RecipeHtmlStripper
             }
             $type = $entry['@type'] ?? null;
             if ($type === 'HowToSection' && isset($entry['itemListElement'])) {
-                $out = array_merge($out, self::flattenInstructions($entry['itemListElement']));
+                $sectionName = isset($entry['name']) ? trim(self::stringify($entry['name'])) : '';
+                $childSteps = self::flattenInstructions($entry['itemListElement']);
+                $childStrings = array_values(array_filter($childSteps, 'is_string'));
+                if ($sectionName !== '' && $childStrings !== []) {
+                    $out[] = ['section' => $sectionName, 'steps' => $childStrings];
+                } else {
+                    $out = array_merge($out, $childSteps);
+                }
 
                 continue;
             }
@@ -196,7 +214,18 @@ final class RecipeHtmlStripper
             }
         }
 
-        return array_values(array_filter($out));
+        $cleaned = [];
+        foreach ($out as $item) {
+            if (is_string($item)) {
+                if (trim($item) !== '') {
+                    $cleaned[] = $item;
+                }
+            } else {
+                $cleaned[] = $item;
+            }
+        }
+
+        return $cleaned;
     }
 
     /**

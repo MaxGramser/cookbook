@@ -58,6 +58,8 @@ final class UnitParser
         'piece' => 'piece', 'pieces' => 'piece', 'whole' => 'piece',
         'stuk' => 'piece', 'stuks' => 'piece', 'st' => 'piece',
         'st.' => 'piece', 'pcs' => 'piece', 'pc' => 'piece',
+        // sticks (US butter convention: 1 stick = 113 g)
+        'stick' => 'stick', 'sticks' => 'stick',
     ];
 
     /**

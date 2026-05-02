@@ -17,11 +17,20 @@ class RecipeExtractor implements Agent, HasStructuredOutput
         return <<<'TXT'
 You extract a single recipe from cleaned HTML/text and return it as structured JSON.
 
-Critical rules:
+# ABSOLUTE RULE — NO MATH
+
+You do NOT perform any arithmetic. You do NOT convert, scale, multiply, divide,
+or round any number. You ONLY split each ingredient line into pieces and copy
+the original tokens verbatim. PHP code runs after you and does the math using
+unit-conversion tables. If you "help" by converting cups to ml or oz to grams,
+the PHP layer will multiply your already-converted number by the unit factor
+again and the result will be wildly wrong. Repeat: copy numbers verbatim, copy
+unit names verbatim. Only the labels you output drive the conversion table.
+
+# Per-field rules
+
 - DO NOT convert units. Copy the unit string verbatim from the source — even if it
   is American (cups, tbsp, oz, lb, fl oz, pint, quart) or unusual (tbspn, T, EL).
-  Conversion to metric happens later in PHP code; if you alter the units the
-  conversion will be wrong.
 - DO NOT scale, round, or recompute quantities. Copy them verbatim, including
   fractions ("1/2", "1 1/2") and ranges ("2-3").
 - Recipes often have multiple sections / chapters (e.g. "For the dough", "Voor
@@ -47,6 +56,27 @@ Critical rules:
 - For cook_time_minutes, sum prep + cook time when both are listed; null if absent.
 - If a field is missing in the source, use null. Never invent values.
 - The recipe text may be in Dutch or English; preserve the source language.
+- A US recipe ambiguously uses "oz" for both weight and volume. If a clearly
+  liquid ingredient (milk, water, oil, broth, juice, beer, wine, vinegar,
+  cream, syrup) is measured in plain "oz", output `unit_text: "fl oz"` —
+  that is the underlying US convention. For solids (cheese, chocolate,
+  cream cheese, meat) keep "oz".
+- Determine the recipe's source culinary locale and return it as
+  `source_locale`. Choose the value that best matches the cup/pint/spoon
+  conventions of the source:
+    * "us"     → United States (cup = 237 ml, pint = 473 ml). Default for
+                 .com sites without other signals (NYT, AllRecipes, Bon
+                 Appétit, Serious Eats).
+    * "au"     → Australia / NZ (cup = 250 ml, tbsp = 20 ml). Recipetineats,
+                 SBS, taste.com.au, donnahay.
+    * "uk"     → United Kingdom / Ireland (pint = 568 ml). BBC Good Food,
+                 Jamie Oliver, Delia, Ottolenghi UK editions.
+    * "metric" → Continental Europe (cup = 250 ml; rare). NL/DE/FR/IT/ES
+                 sites: 24kitchen, Allerhande, Eef Kookt Zo, leukerecepten,
+                 Marmiton, Giallo Zafferano.
+    * "unknown" → only when there is no signal at all.
+  Use the source's domain, language, and unit choices to decide. When in
+  doubt between us and metric for an English-language site, choose us.
 TXT;
     }
 
@@ -54,6 +84,7 @@ TXT;
     {
         return [
             'title' => $schema->string()->required(),
+            'source_locale' => $schema->string()->enum(['us', 'au', 'uk', 'metric', 'unknown']),
             'servings' => $schema->integer(),
             'cook_time_minutes' => $schema->integer(),
             'image_url' => $schema->string(),

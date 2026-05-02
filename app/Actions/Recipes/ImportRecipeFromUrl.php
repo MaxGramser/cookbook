@@ -7,6 +7,7 @@ use App\Models\Recipe;
 use App\Models\User;
 use App\Support\Recipes\RecipeHtmlStripper;
 use App\Support\Units\IngredientNormalizer;
+use App\Support\Units\UnitConverter;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -28,8 +29,9 @@ final class ImportRecipeFromUrl
 
         $extracted = $this->extractor->prompt($stripped['text']);
         $imageUrl = $extracted['image_url'] ?? $stripped['image_url'];
+        $locale = self::resolveLocale($extracted['source_locale'] ?? null);
 
-        return DB::transaction(function () use ($user, $url, $extracted, $imageUrl) {
+        return DB::transaction(function () use ($user, $url, $extracted, $imageUrl, $locale) {
             $recipe = $user->recipes()->create([
                 'title' => $extracted['title'],
                 'source_url' => $url,
@@ -48,11 +50,13 @@ final class ImportRecipeFromUrl
                     $row['unit_text'] ?? null,
                     (string) ($row['name'] ?? ''),
                     self::buildRawText($row),
+                    $locale,
                 );
                 if ($normalized['name'] === '') {
                     continue;
                 }
                 $recipe->ingredients()->create([
+                    'section' => self::cleanSection($row['section'] ?? null),
                     'position' => $position,
                     'name' => $normalized['name'],
                     'quantity' => $normalized['quantity'],
@@ -62,17 +66,42 @@ final class ImportRecipeFromUrl
             }
 
             $position = 0;
-            foreach ((array) ($extracted['steps'] ?? []) as $body) {
-                $body = is_string($body) ? trim($body) : '';
+            foreach ((array) ($extracted['steps'] ?? []) as $row) {
+                $body = is_string($row)
+                    ? trim($row)
+                    : trim((string) ($row['body'] ?? ''));
                 if ($body === '') {
                     continue;
                 }
                 $position++;
-                $recipe->steps()->create(['position' => $position, 'body' => $body]);
+                $recipe->steps()->create([
+                    'section' => is_array($row) ? self::cleanSection($row['section'] ?? null) : null,
+                    'position' => $position,
+                    'body' => $body,
+                ]);
             }
 
             return $recipe;
         });
+    }
+
+    private static function cleanSection(mixed $section): ?string
+    {
+        if (! is_string($section)) {
+            return null;
+        }
+        $trimmed = trim($section);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private static function resolveLocale(mixed $value): string
+    {
+        if (is_string($value) && UnitConverter::isLocale($value)) {
+            return $value;
+        }
+
+        return UnitConverter::LOCALE_US;
     }
 
     private function fetchHtml(string $url): string

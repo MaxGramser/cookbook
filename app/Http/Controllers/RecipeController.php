@@ -114,8 +114,8 @@ class RecipeController extends Controller
     }
 
     /**
-     * @param  array<int, array{quantity_text?: ?string, unit_text?: ?string, name: string, raw_text?: ?string}>  $ingredients
-     * @param  array<int, array{body: string}>  $steps
+     * @param  array<int, array{section?: ?string, quantity_text?: ?string, unit_text?: ?string, name: string, raw_text?: ?string}>  $ingredients
+     * @param  array<int, array{section?: ?string, body: string}>  $steps
      */
     private function syncIngredientsAndSteps(Recipe $recipe, array $ingredients, array $steps): void
     {
@@ -128,6 +128,7 @@ class RecipeController extends Controller
             );
 
             $recipe->ingredients()->create([
+                'section' => self::normalizeSection($row['section'] ?? null),
                 'position' => $i + 1,
                 'name' => $normalized['name'],
                 'quantity' => $normalized['quantity'],
@@ -138,10 +139,21 @@ class RecipeController extends Controller
 
         foreach (array_values($steps) as $i => $row) {
             $recipe->steps()->create([
+                'section' => self::normalizeSection($row['section'] ?? null),
                 'position' => $i + 1,
                 'body' => $row['body'],
             ]);
         }
+    }
+
+    private static function normalizeSection(?string $section): ?string
+    {
+        if ($section === null) {
+            return null;
+        }
+        $trimmed = trim($section);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     private function authorizeOwner(Request $request, Recipe $recipe): void

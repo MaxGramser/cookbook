@@ -5,14 +5,19 @@ import CookSessionController from '@/actions/App/Http/Controllers/CookSessionCon
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
+import { computed } from 'vue';
 import type { CookSessionSummary, Recipe } from '@/types/recipes';
 
-defineProps<{
+const props = defineProps<{
     recipe: Recipe;
     recentSessions: CookSessionSummary[];
 }>();
+
+const ingredientGroups = computed(() => groupBySection(props.recipe.ingredients));
+const stepGroups = computed(() => groupBySection(props.recipe.steps));
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: recipesIndex() }] },
@@ -90,34 +95,62 @@ function formatDate(value: string | null | undefined): string {
             <div class="flex flex-col gap-6">
                 <section>
                     <h2 class="mb-3 font-semibold">Ingrediënten</h2>
-                    <ul class="divide-y rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <li
-                            v-for="ingredient in recipe.ingredients"
-                            :key="ingredient.id"
-                            class="flex justify-between gap-4 px-4 py-2 text-sm"
+                    <div class="flex flex-col gap-4">
+                        <div
+                            v-for="(group, groupIdx) in ingredientGroups"
+                            :key="`ig-${groupIdx}`"
+                            class="flex flex-col gap-1"
                         >
-                            <span>{{ ingredient.name }}</span>
-                            <span class="text-muted-foreground">
-                                {{ formatQuantity(ingredient.quantity, ingredient.unit) || ingredient.raw_text }}
-                            </span>
-                        </li>
-                    </ul>
+                            <h3
+                                v-if="group.section"
+                                class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                                {{ group.section }}
+                            </h3>
+                            <ul class="divide-y rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                                <li
+                                    v-for="ingredient in group.items"
+                                    :key="ingredient.id"
+                                    class="flex justify-between gap-4 px-4 py-2 text-sm"
+                                >
+                                    <span>{{ ingredient.name }}</span>
+                                    <span class="text-muted-foreground">
+                                        {{ formatQuantity(ingredient.quantity, ingredient.unit) || ingredient.raw_text }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </section>
 
                 <section>
                     <h2 class="mb-3 font-semibold">Stappen</h2>
-                    <ol class="flex flex-col gap-3">
-                        <li
-                            v-for="step in recipe.steps"
-                            :key="step.id"
-                            class="flex gap-3 rounded-xl border border-sidebar-border/70 p-3 text-sm dark:border-sidebar-border"
+                    <div class="flex flex-col gap-4">
+                        <div
+                            v-for="(group, groupIdx) in stepGroups"
+                            :key="`sg-${groupIdx}`"
+                            class="flex flex-col gap-2"
                         >
-                            <span class="size-7 shrink-0 rounded-full bg-muted text-center leading-7 font-medium">
-                                {{ step.position }}
-                            </span>
-                            <p class="whitespace-pre-line">{{ step.body }}</p>
-                        </li>
-                    </ol>
+                            <h3
+                                v-if="group.section"
+                                class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                                {{ group.section }}
+                            </h3>
+                            <ol class="flex flex-col gap-2">
+                                <li
+                                    v-for="step in group.items"
+                                    :key="step.id"
+                                    class="flex gap-3 rounded-xl border border-sidebar-border/70 p-3 text-sm dark:border-sidebar-border"
+                                >
+                                    <span class="size-7 shrink-0 rounded-full bg-muted text-center leading-7 font-medium">
+                                        {{ step.position }}
+                                    </span>
+                                    <p class="whitespace-pre-line">{{ step.body }}</p>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
                 </section>
 
                 <section v-if="recipe.notes">

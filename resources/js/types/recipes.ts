@@ -3,6 +3,7 @@ export type Unit = 'g' | 'ml' | 'tsp' | 'tbsp' | 'piece' | null;
 export type RecipeIngredient = {
     id: number;
     recipe_id: number;
+    section: string | null;
     position: number;
     name: string;
     quantity: number | null;
@@ -13,6 +14,7 @@ export type RecipeIngredient = {
 export type RecipeStep = {
     id: number;
     recipe_id: number;
+    section: string | null;
     position: number;
     body: string;
 };
