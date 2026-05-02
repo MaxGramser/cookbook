@@ -65,6 +65,52 @@ test('session multiplier and notes can be patched', function () {
     expect($session->notes)->toBe('Te zout');
 });
 
+test('pausing accumulates paused seconds when resumed', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    $session = CookSession::factory()->for($recipe)->for($user)->create([
+        'started_at' => now()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)->post("/cook/{$session->id}/pause")->assertRedirect();
+
+    $session->refresh();
+    expect($session->paused_at)->not->toBeNull();
+
+    $this->travel(30)->seconds();
+    $this->actingAs($user)->post("/cook/{$session->id}/resume")->assertRedirect();
+
+    $session->refresh();
+    expect($session->paused_at)->toBeNull();
+    expect($session->paused_seconds)->toBeGreaterThanOrEqual(29);
+    expect($session->paused_seconds)->toBeLessThanOrEqual(31);
+});
+
+test('completing while paused finalizes paused_seconds', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    $session = CookSession::factory()->for($recipe)->for($user)->create([
+        'started_at' => now()->subMinutes(10),
+        'paused_at' => now()->subMinutes(2),
+    ]);
+
+    $this->actingAs($user)->post("/cook/{$session->id}/complete");
+
+    $session->refresh();
+    expect($session->paused_at)->toBeNull();
+    expect($session->paused_seconds)->toBeGreaterThanOrEqual(118);
+    expect($session->completed_at)->not->toBeNull();
+});
+
+test('cannot pause a completed session', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    $session = CookSession::factory()->for($recipe)->for($user)->completed()->create();
+
+    $this->actingAs($user)->post("/cook/{$session->id}/pause");
+    expect($session->fresh()->paused_at)->toBeNull();
+});
+
 test('completing a session marks it as done', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
     $recipe = Recipe::factory()->for($user)->create();

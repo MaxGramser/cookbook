@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['recipe_id', 'user_id', 'servings_multiplier', 'notes', 'started_at', 'completed_at'])]
+#[Fillable(['recipe_id', 'user_id', 'servings_multiplier', 'notes', 'started_at', 'completed_at', 'paused_at', 'paused_seconds'])]
 class CookSession extends Model
 {
     /** @use HasFactory<CookSessionFactory> */
@@ -21,7 +21,14 @@ class CookSession extends Model
             'servings_multiplier' => 'float',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'paused_at' => 'datetime',
+            'paused_seconds' => 'integer',
         ];
+    }
+
+    public function isPaused(): bool
+    {
+        return $this->paused_at !== null;
     }
 
     public function recipe(): BelongsTo

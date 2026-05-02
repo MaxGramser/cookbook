@@ -46,6 +46,8 @@ export type CookSessionDetail = {
     notes: string | null;
     started_at: string;
     completed_at: string | null;
+    paused_at: string | null;
+    paused_seconds: number;
     recipe: {
         id: number;
         title: string;

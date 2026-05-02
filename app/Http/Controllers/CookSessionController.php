@@ -44,6 +44,8 @@ class CookSessionController extends Controller
                 'notes' => $session->notes,
                 'started_at' => $session->started_at,
                 'completed_at' => $session->completed_at,
+                'paused_at' => $session->paused_at,
+                'paused_seconds' => $session->paused_seconds,
                 'recipe' => [
                     'id' => $session->recipe->id,
                     'title' => $session->recipe->title,
@@ -78,10 +80,53 @@ class CookSessionController extends Controller
         $this->authorizeOwner($request, $session);
 
         if ($session->completed_at === null) {
-            $session->update(['completed_at' => now()]);
+            $session->update([
+                'completed_at' => now(),
+                'paused_seconds' => self::resolvePausedSeconds($session),
+                'paused_at' => null,
+            ]);
         }
 
         return redirect()->route('recipes.show', $session->recipe_id);
+    }
+
+    public function pause(Request $request, CookSession $session): RedirectResponse
+    {
+        $this->authorizeOwner($request, $session);
+
+        if ($session->completed_at !== null || $session->paused_at !== null) {
+            return back();
+        }
+
+        $session->update(['paused_at' => now()]);
+
+        return back();
+    }
+
+    public function resume(Request $request, CookSession $session): RedirectResponse
+    {
+        $this->authorizeOwner($request, $session);
+
+        if ($session->completed_at !== null || $session->paused_at === null) {
+            return back();
+        }
+
+        $session->update([
+            'paused_seconds' => self::resolvePausedSeconds($session),
+            'paused_at' => null,
+        ]);
+
+        return back();
+    }
+
+    private static function resolvePausedSeconds(CookSession $session): int
+    {
+        $accumulated = (int) $session->paused_seconds;
+        if ($session->paused_at === null) {
+            return $accumulated;
+        }
+
+        return $accumulated + max(0, now()->diffInSeconds($session->paused_at, false) * -1);
     }
 
     public function destroy(Request $request, CookSession $session): RedirectResponse

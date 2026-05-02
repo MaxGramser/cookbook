@@ -21,6 +21,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('cook/{session}', [CookSessionController::class, 'show'])->name('cook.show');
     Route::patch('cook/{session}', [CookSessionController::class, 'update'])->name('cook.update');
     Route::post('cook/{session}/complete', [CookSessionController::class, 'complete'])->name('cook.complete');
+    Route::post('cook/{session}/pause', [CookSessionController::class, 'pause'])->name('cook.pause');
+    Route::post('cook/{session}/resume', [CookSessionController::class, 'resume'])->name('cook.resume');
     Route::delete('cook/{session}', [CookSessionController::class, 'destroy'])->name('cook.destroy');
     Route::post('cook/{session}/ingredients/{ingredient}', [CookSessionController::class, 'toggleIngredient'])->name('cook.ingredient.toggle');
     Route::post('cook/{session}/steps/{step}', [CookSessionController::class, 'toggleStep'])->name('cook.step.toggle');

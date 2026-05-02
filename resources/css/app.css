@@ -170,3 +170,39 @@
         @apply bg-background text-foreground;
     }
 }
+
+#print-portal {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 1.4cm;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    body.is-printing-recipe > *:not(#print-portal) {
+        display: none !important;
+    }
+
+    body.is-printing-recipe #print-portal {
+        display: block !important;
+    }
+
+    .print-area {
+        color: black !important;
+    }
+
+    .print-area * {
+        background: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        color: inherit !important;
+        border-color: black !important;
+    }
+}

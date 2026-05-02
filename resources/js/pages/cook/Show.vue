@@ -9,6 +9,8 @@ import {
     MessageSquare,
     MoreVertical,
     Minus,
+    Pause,
+    Play,
     Plus,
     Timer,
     X,
@@ -37,6 +39,8 @@ import { formatQuantity } from '@/lib/units';
 import {
     complete as completeSession,
     destroy as destroySession,
+    pause as pauseSession,
+    resume as resumeSession,
     update as updateSession,
 } from '@/routes/cook';
 import { toggle as toggleIngredient } from '@/routes/cook/ingredient';
@@ -61,6 +65,7 @@ const scaledServings = computed(() => Math.round(baseServings * multiplier.value
 const totalIngredients = computed(() => props.session.recipe.ingredients.length);
 const totalSteps = computed(() => props.session.recipe.steps.length);
 const isCompleted = computed(() => props.session.completed_at !== null);
+const isPaused = computed(() => props.session.paused_at !== null && !isCompleted.value);
 const ingredientGroups = computed(() => groupBySection(props.session.recipe.ingredients));
 const stepGroups = computed(() => groupBySection(props.session.recipe.steps));
 const ingredientPct = computed(() =>
@@ -71,16 +76,41 @@ const stepPct = computed(() =>
 );
 
 const now = ref<number>(Date.now());
-const { remaining, timers, start: startTimer, dismiss: dismissTimer, checkForFinished } =
-    useStepTimers(now);
+const {
+    remaining,
+    timers,
+    start: startTimer,
+    dismiss: dismissTimer,
+    pauseAll: pauseStepTimers,
+    resumeAll: resumeStepTimers,
+    checkForFinished,
+} = useStepTimers(now);
 
 let tick: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
-    if (!isCompleted.value) {
+    if (!isCompleted.value && !isPaused.value) {
         tick = setInterval(() => {
             now.value = Date.now();
             checkForFinished();
         }, 500);
+    }
+});
+
+watch(isPaused, (paused) => {
+    if (paused) {
+        pauseStepTimers();
+        if (tick !== null) {
+            clearInterval(tick);
+            tick = null;
+        }
+    } else if (!isCompleted.value) {
+        resumeStepTimers();
+        if (tick === null) {
+            tick = setInterval(() => {
+                now.value = Date.now();
+                checkForFinished();
+            }, 500);
+        }
     }
 });
 onBeforeUnmount(() => {
@@ -91,11 +121,17 @@ onBeforeUnmount(() => {
 
 useWakeLock(() => !isCompleted.value);
 
-const elapsedMs = computed(() =>
-    isCompleted.value
-        ? durationBetween(props.session.started_at, props.session.completed_at)
-        : Math.max(0, now.value - new Date(props.session.started_at).getTime()),
-);
+const elapsedMs = computed(() => {
+    const start = new Date(props.session.started_at).getTime();
+    const pausedMs = (props.session.paused_seconds ?? 0) * 1000;
+    if (isCompleted.value && props.session.completed_at) {
+        return Math.max(0, new Date(props.session.completed_at).getTime() - start - pausedMs);
+    }
+    if (isPaused.value && props.session.paused_at) {
+        return Math.max(0, new Date(props.session.paused_at).getTime() - start - pausedMs);
+    }
+    return Math.max(0, now.value - start - pausedMs);
+});
 const elapsedLive = computed(() => formatStopwatch(elapsedMs.value));
 const elapsedLabel = computed(() => formatDuration(elapsedMs.value));
 
@@ -166,6 +202,13 @@ function cancel(): void {
     router.delete(destroySession(props.session.id).url);
 }
 
+function togglePause(): void {
+    const url = isPaused.value
+        ? resumeSession(props.session.id).url
+        : pauseSession(props.session.id).url;
+    router.post(url, {}, { preserveScroll: true });
+}
+
 function timerLabel(stepId: number): string | null {
     const ms = remaining.value.get(stepId);
     if (ms === undefined) {
@@ -191,16 +234,29 @@ function timerFinished(stepId: number): boolean {
                 <h1 class="line-clamp-1 flex-1 text-sm font-semibold sm:text-base">
                     {{ session.recipe.title }}
                 </h1>
-                <div
-                    class="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums"
+                <button
+                    v-if="!isCompleted"
+                    type="button"
+                    class="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums transition active:scale-95"
                     :class="
-                        isCompleted
-                            ? 'bg-muted text-muted-foreground'
+                        isPaused
+                            ? 'bg-amber-500 text-white'
                             : 'bg-primary text-primary-foreground'
                     "
-                    :title="isCompleted ? `Voltooid in ${elapsedLabel}` : 'Tijd sinds start'"
+                    :title="isPaused ? 'Hervat' : 'Pauzeer'"
+                    :aria-label="isPaused ? 'Hervat' : 'Pauzeer'"
+                    @click="togglePause"
                 >
-                    <Clock class="size-3.5" :class="{ 'animate-pulse': !isCompleted }" />
+                    <Pause v-if="!isPaused" class="size-3.5 animate-pulse" />
+                    <Play v-else class="size-3.5" />
+                    <span>{{ elapsedLive }}</span>
+                </button>
+                <div
+                    v-else
+                    class="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-sm font-semibold tabular-nums text-muted-foreground"
+                    :title="`Voltooid in ${elapsedLabel}`"
+                >
+                    <Clock class="size-3.5" />
                     <span>{{ elapsedLive }}</span>
                 </div>
                 <DropdownMenu>
@@ -210,6 +266,11 @@ function timerFinished(stepId: number): boolean {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem v-if="!isCompleted" @select="togglePause">
+                            <Pause v-if="!isPaused" class="size-4" />
+                            <Play v-else class="size-4" />
+                            {{ isPaused ? 'Hervat' : 'Pauzeer' }}
+                        </DropdownMenuItem>
                         <DropdownMenuItem @select="notesOpen = true">
                             <MessageSquare class="size-4" /> Notitie toevoegen
                         </DropdownMenuItem>

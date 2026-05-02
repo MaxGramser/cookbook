@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { Clock, Pencil, Play, Users } from 'lucide-vue-next';
+import { Clock, Pencil, Play, Printer, Users } from 'lucide-vue-next';
 import CookSessionController from '@/actions/App/Http/Controllers/CookSessionController';
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import Heading from '@/components/Heading.vue';
+import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
 import { Button } from '@/components/ui/button';
 import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { CookSessionSummary, Recipe } from '@/types/recipes';
 
 const props = defineProps<{
@@ -19,6 +20,7 @@ const props = defineProps<{
 
 const ingredientGroups = computed(() => groupBySection(props.recipe.ingredients));
 const stepGroups = computed(() => groupBySection(props.recipe.steps));
+const printOpen = ref<boolean>(false);
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: recipesIndex() }] },
@@ -54,7 +56,10 @@ function formatDate(value: string | null | undefined): string {
     <div class="flex flex-col gap-6 p-4 md:p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <Heading :title="recipe.title" />
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" @click="printOpen = true">
+                    <Printer class="size-4" /> Print
+                </Button>
                 <Button as-child variant="outline">
                     <Link :href="editRecipe(recipe.id)">
                         <Pencil class="size-4" /> Bewerken
@@ -194,5 +199,7 @@ function formatDate(value: string | null | undefined): string {
                 </Form>
             </div>
         </div>
+
+        <PrintRecipeDialog v-model:open="printOpen" :recipe="recipe" />
     </div>
 </template>

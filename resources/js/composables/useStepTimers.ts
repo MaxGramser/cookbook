@@ -24,6 +24,8 @@ export function detectTimerMinutes(text: string): number | null {
 export function useStepTimers(now: Ref<number>) {
     const timers = ref<Map<number, TimerState>>(new Map());
     const beeped = new Set<number>();
+    /** While a session is paused, each timer's remaining ms is frozen here. */
+    const frozenRemaining = new Map<number, number>();
 
     function start(stepId: number, minutes: number): void {
         const durationMs = minutes * 60_000;
@@ -33,6 +35,7 @@ export function useStepTimers(now: Ref<number>) {
             finished: false,
         });
         beeped.delete(stepId);
+        frozenRemaining.delete(stepId);
     }
 
     function dismiss(stepId: number): void {
@@ -40,18 +43,49 @@ export function useStepTimers(now: Ref<number>) {
         next.delete(stepId);
         timers.value = next;
         beeped.delete(stepId);
+        frozenRemaining.delete(stepId);
+    }
+
+    function pauseAll(): void {
+        const nowMs = Date.now();
+        for (const [id, t] of timers.value) {
+            if (t.finished) {
+                continue;
+            }
+            frozenRemaining.set(id, Math.max(0, t.endsAt - nowMs));
+        }
+    }
+
+    function resumeAll(): void {
+        if (frozenRemaining.size === 0) {
+            return;
+        }
+        const next = new Map(timers.value);
+        const nowMs = Date.now();
+        for (const [id, remainingMs] of frozenRemaining) {
+            const t = next.get(id);
+            if (t && !t.finished) {
+                next.set(id, { ...t, endsAt: nowMs + remainingMs });
+            }
+        }
+        timers.value = next;
+        frozenRemaining.clear();
     }
 
     const remaining = computed(() => {
         const out = new Map<number, number>();
         for (const [id, t] of timers.value) {
-            out.set(id, Math.max(0, t.endsAt - now.value));
+            const frozen = frozenRemaining.get(id);
+            out.set(id, frozen ?? Math.max(0, t.endsAt - now.value));
         }
         return out;
     });
 
     function checkForFinished(): void {
         for (const [id, t] of timers.value) {
+            if (frozenRemaining.has(id)) {
+                continue;
+            }
             if (!t.finished && now.value >= t.endsAt && !beeped.has(id)) {
                 beeped.add(id);
                 t.finished = true;
@@ -60,7 +94,7 @@ export function useStepTimers(now: Ref<number>) {
         }
     }
 
-    return { timers, remaining, start, dismiss, checkForFinished };
+    return { timers, remaining, start, dismiss, pauseAll, resumeAll, checkForFinished };
 }
 
 let audioCtx: AudioContext | null = null;
