@@ -1,11 +1,15 @@
 // Mijn kookboek — minimal PWA service worker.
 // Goal: enable Add to Home Screen + offline shell on iOS Safari & Android Chrome.
-const CACHE_VERSION = 'kookboek-v1';
+const CACHE_VERSION = 'kookboek-v2';
 const APP_SHELL = [
     '/icon.svg',
     '/icon-maskable.svg',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/icon-512-maskable.png',
     '/apple-touch-icon.png',
     '/favicon.svg',
+    '/favicon.ico',
     '/manifest.webmanifest',
 ];
 

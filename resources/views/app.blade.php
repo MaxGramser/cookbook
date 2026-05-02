@@ -32,7 +32,8 @@
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+        <link rel="mask-icon" href="/favicon.svg" color="#E0673E">
 
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#E8E2D5">
