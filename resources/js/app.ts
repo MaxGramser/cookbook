@@ -31,3 +31,13 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+// Register the PWA service worker so the app can be added to the homescreen on
+// iOS Safari and Android Chrome and continue working when offline.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {
+            // swallow — registration failing should never break the app shell
+        });
+    });
+}

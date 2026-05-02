@@ -20,6 +20,13 @@ export type ActiveCookSession = {
     paused_at: string | null;
 };
 
+export type ActiveGrocerySession = {
+    id: number;
+    recipe_title: string;
+    phase: 'home' | 'shopping';
+    started_at: string;
+};
+
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
@@ -27,6 +34,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             sidebarOpen: boolean;
             activeCookSession: ActiveCookSession | null;
+            activeGrocerySession: ActiveGrocerySession | null;
             [key: string]: unknown;
         };
     }

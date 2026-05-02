@@ -25,6 +25,16 @@ export type RecipeSummary = {
     image_path: string | null;
     cook_time_minutes: number | null;
     servings: number;
+    is_starred: boolean;
+    cooked_count: number;
+    last_cooked_at: string | null;
+};
+
+export type RecipeListFilters = {
+    q: string;
+    starred: boolean;
+    cooked: boolean;
+    time: 'quick' | 'medium' | 'long' | null;
 };
 
 export type Recipe = {
@@ -36,6 +46,9 @@ export type Recipe = {
     servings: number;
     cook_time_minutes: number | null;
     notes: string | null;
+    is_starred?: boolean;
+    cooked_count?: number;
+    last_cooked_at?: string | null;
     ingredients: RecipeIngredient[];
     steps: RecipeStep[];
 };
@@ -65,6 +78,31 @@ export type CookSessionSummary = {
     id: number;
     recipe_id: number;
     servings_multiplier: number;
+    completed_at: string | null;
+    started_at?: string;
+    notes: string | null;
+    recipe?: { id: number; title: string; image_path: string | null };
+};
+
+export type GrocerySessionDetail = {
+    id: number;
+    phase: 'home' | 'shopping';
+    started_at: string;
+    completed_at: string | null;
+    recipe: {
+        id: number;
+        title: string;
+        image_path: string | null;
+        servings: number;
+        ingredients: RecipeIngredient[];
+    };
+    checks: { id: number; phase: 'home' | 'shopping' }[];
+};
+
+export type GrocerySessionSummary = {
+    id: number;
+    recipe_id: number;
+    phase: 'home' | 'shopping';
     completed_at: string | null;
     started_at?: string;
     recipe?: { id: number; title: string; image_path: string | null };

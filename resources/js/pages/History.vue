@@ -1,13 +1,31 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { ChefHat, Clock } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ChefHat, Clock, MessageSquare, MoreVertical, Pencil, ShoppingBasket, Trash2 } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { durationBetween, formatDuration } from '@/lib/duration';
 import { dashboard } from '@/routes';
+import { destroy as destroySession, update as updateSession } from '@/routes/cook';
 import { show as showRecipe } from '@/routes/recipes';
-import type { CookSessionSummary } from '@/types/recipes';
+import type { CookSessionSummary, GrocerySessionSummary } from '@/types/recipes';
 
-const props = defineProps<{ sessions: CookSessionSummary[] }>();
+const props = defineProps<{
+    sessions: CookSessionSummary[];
+    grocerySessions: GrocerySessionSummary[];
+}>();
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Geschiedenis', href: dashboard() }] },
@@ -17,20 +35,52 @@ const totalCompleted = computed(
     () => props.sessions.filter((s) => s.completed_at).length,
 );
 
-const grouped = computed(() => {
-    const out: Record<string, CookSessionSummary[]> = {};
+const totalGroceries = computed(
+    () => props.grocerySessions.filter((s) => s.completed_at).length,
+);
+
+function monthKey(value: string): string {
+    return new Intl.DateTimeFormat('nl-NL', {
+        year: 'numeric',
+        month: 'long',
+    }).format(new Date(value));
+}
+
+const months = computed(() => {
+    const map = new Map<
+        string,
+        { label: string; cook: CookSessionSummary[]; grocery: GrocerySessionSummary[] }
+    >();
+
     for (const session of props.sessions) {
         if (!session.completed_at) {
             continue;
         }
-        const key = new Intl.DateTimeFormat('nl-NL', {
-            year: 'numeric',
-            month: 'long',
-        }).format(new Date(session.completed_at));
-        out[key] ??= [];
-        out[key].push(session);
+
+        const key = monthKey(session.completed_at);
+
+        if (!map.has(key)) {
+            map.set(key, { label: key, cook: [], grocery: [] });
+        }
+
+        map.get(key)!.cook.push(session);
     }
-    return out;
+
+    for (const session of props.grocerySessions) {
+        if (!session.completed_at) {
+            continue;
+        }
+
+        const key = monthKey(session.completed_at);
+
+        if (!map.has(key)) {
+            map.set(key, { label: key, cook: [], grocery: [] });
+        }
+
+        map.get(key)!.grocery.push(session);
+    }
+
+    return Array.from(map.values());
 });
 
 const monthPalette = ['lime', 'pink', 'sky', 'cream'] as const;
@@ -55,11 +105,62 @@ function formatDate(value: string): string {
     }).format(new Date(value));
 }
 
+function formatShortDate(value: string): string {
+    return new Intl.DateTimeFormat('nl-NL', {
+        day: 'numeric',
+        month: 'short',
+    }).format(new Date(value));
+}
+
 function sessionDuration(session: CookSessionSummary): string | null {
     if (!session.started_at || !session.completed_at) {
         return null;
     }
+
     return formatDuration(durationBetween(session.started_at, session.completed_at));
+}
+
+const editing = ref<CookSessionSummary | null>(null);
+const noteDraft = ref<string>('');
+const saving = ref<boolean>(false);
+
+function openEditNote(session: CookSessionSummary): void {
+    editing.value = session;
+    noteDraft.value = session.notes ?? '';
+}
+
+function closeEditNote(): void {
+    editing.value = null;
+    noteDraft.value = '';
+    saving.value = false;
+}
+
+function saveNote(): void {
+    if (editing.value === null) {
+        return;
+    }
+
+    saving.value = true;
+    const sessionId = editing.value.id;
+    router.patch(
+        updateSession(sessionId).url,
+        { notes: noteDraft.value },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeEditNote(),
+            onError: () => {
+                saving.value = false;
+            },
+        },
+    );
+}
+
+function deleteSession(session: CookSessionSummary): void {
+    if (!confirm(`Verwijder deze sessie van ${session.recipe?.title ?? 'dit recept'}? Dit kan niet ongedaan worden gemaakt.`)) {
+        return;
+    }
+
+    router.delete(destroySession(session.id).url, { preserveScroll: true });
 }
 </script>
 
@@ -78,7 +179,7 @@ function sessionDuration(session: CookSessionSummary): string | null {
                         <span class="italic text-brand">gekookt</span>
                     </h1>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div class="rounded-2xl bg-block-lime px-4 py-3 text-ink">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/60">
                             Sessies
@@ -92,7 +193,15 @@ function sessionDuration(session: CookSessionSummary): string | null {
                             Maanden
                         </p>
                         <p class="font-display text-3xl tabular-nums">
-                            {{ Object.keys(grouped).length }}
+                            {{ months.length }}
+                        </p>
+                    </div>
+                    <div class="rounded-2xl bg-block-sky px-4 py-3 text-ink">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/65">
+                            Boodschappen
+                        </p>
+                        <p class="font-display text-3xl tabular-nums">
+                            {{ totalGroceries }}
                         </p>
                     </div>
                 </div>
@@ -100,7 +209,7 @@ function sessionDuration(session: CookSessionSummary): string | null {
         </div>
 
         <div
-            v-if="totalCompleted === 0"
+            v-if="totalCompleted === 0 && totalGroceries === 0"
             class="rounded-3xl border border-dashed border-rule bg-cream-soft p-12 text-center"
         >
             <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-ink text-cream">
@@ -113,27 +222,31 @@ function sessionDuration(session: CookSessionSummary): string | null {
         </div>
 
         <div
-            v-for="(items, label, idx) in grouped"
-            :key="label"
-            :class="['relative overflow-hidden rounded-3xl p-5 md:p-6', monthBgClass[monthBlock(Number(idx))]]"
+            v-for="(month, idx) in months"
+            :key="month.label"
+            :class="['relative overflow-hidden rounded-3xl p-5 md:p-6', monthBgClass[monthBlock(idx)]]"
         >
-            <div class="mb-4 flex items-baseline justify-between gap-3">
-                <h2 class="font-display text-3xl leading-tight capitalize">
-                    {{ label }}
+            <div class="mb-5 flex items-baseline justify-between gap-3">
+                <h2 class="font-display text-3xl leading-tight capitalize md:text-4xl">
+                    {{ month.label }}
                 </h2>
                 <span class="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-cream tabular-nums">
-                    {{ items.length }}×
+                    {{ month.cook.length }}×
                 </span>
             </div>
 
-            <ul class="flex flex-col gap-2">
-                <li v-for="session in items" :key="session.id">
+            <ul v-if="month.cook.length > 0" class="flex flex-col gap-3">
+                <li
+                    v-for="session in month.cook"
+                    :key="`c-${session.id}`"
+                    class="group relative flex items-stretch gap-1 overflow-hidden rounded-2xl bg-cream transition hover:-translate-y-0.5 hover:shadow-tile"
+                >
                     <Link
                         v-if="session.recipe"
                         :href="showRecipe(session.recipe.id)"
-                        class="group flex items-center gap-4 rounded-2xl bg-cream px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-tile"
+                        class="flex min-w-0 flex-1 items-center gap-4 px-4 py-4 md:gap-5 md:px-5 md:py-5"
                     >
-                        <div class="size-14 shrink-0 overflow-hidden rounded-xl bg-ink/5">
+                        <div class="size-20 shrink-0 overflow-hidden rounded-2xl bg-ink/5 md:size-24">
                             <img
                                 v-if="session.recipe.image_path"
                                 :src="`/storage/${session.recipe.image_path}`"
@@ -144,38 +257,134 @@ function sessionDuration(session: CookSessionSummary): string | null {
                                 v-else
                                 class="flex h-full w-full items-center justify-center text-ink-faint"
                             >
-                                <ChefHat class="size-5" />
+                                <ChefHat class="size-6" />
                             </div>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <p class="line-clamp-1 font-display text-lg leading-tight">
+                            <p class="line-clamp-1 font-display text-2xl leading-tight md:text-3xl">
                                 {{ session.recipe.title }}
                             </p>
-                            <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-soft">
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
                                 <span class="font-semibold uppercase tracking-[0.16em]">
                                     {{ formatDate(session.completed_at!) }}
                                 </span>
                                 <span
-                                    class="rounded-full bg-ink/5 px-2 py-0.5 font-semibold tabular-nums"
+                                    class="rounded-full bg-ink/5 px-2.5 py-0.5 font-semibold tabular-nums"
                                 >
                                     ×{{ session.servings_multiplier }}
                                 </span>
                                 <span
                                     v-if="sessionDuration(session)"
-                                    class="flex items-center gap-1 rounded-full bg-ink/5 px-2 py-0.5 font-semibold tabular-nums"
+                                    class="flex items-center gap-1 rounded-full bg-ink/5 px-2.5 py-0.5 font-semibold tabular-nums"
                                 >
                                     <Clock class="size-3" /> {{ sessionDuration(session) }}
                                 </span>
+                                <span
+                                    v-if="session.notes"
+                                    class="flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-0.5 font-semibold text-ink"
+                                >
+                                    <MessageSquare class="size-3" /> notitie
+                                </span>
                             </div>
+                            <p
+                                v-if="session.notes"
+                                class="mt-2 line-clamp-2 text-sm leading-snug text-ink-soft"
+                            >
+                                {{ session.notes }}
+                            </p>
                         </div>
-                        <span
-                            class="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-cream transition group-hover:rotate-12"
-                        >
-                            <Clock class="size-4" />
-                        </span>
                     </Link>
+
+                    <div class="flex items-center pr-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <button
+                                    type="button"
+                                    class="grid size-9 place-items-center rounded-full text-ink-soft transition hover:bg-ink/5"
+                                    :aria-label="`Acties voor ${session.recipe?.title ?? 'sessie'}`"
+                                >
+                                    <MoreVertical class="size-4" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem @select="openEditNote(session)">
+                                    <Pencil class="size-4" />
+                                    {{ session.notes ? 'Notitie bewerken' : 'Notitie toevoegen' }}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    class="text-destructive"
+                                    @select="deleteSession(session)"
+                                >
+                                    <Trash2 class="size-4" /> Verwijderen
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </li>
             </ul>
+
+            <div v-if="month.grocery.length > 0" class="mt-4">
+                <p class="mb-2 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+                    <ShoppingBasket class="size-3" /> Boodschappen ({{ month.grocery.length }})
+                </p>
+                <ul class="flex flex-wrap gap-1.5">
+                    <li
+                        v-for="g in month.grocery"
+                        :key="`g-${g.id}`"
+                        class="inline-flex items-center gap-1.5 rounded-full bg-cream/80 px-2.5 py-1 text-[11px] text-ink-soft"
+                    >
+                        <ShoppingBasket class="size-3 shrink-0" />
+                        <Link
+                            v-if="g.recipe"
+                            :href="showRecipe(g.recipe.id)"
+                            class="line-clamp-1 max-w-[10rem] hover:text-ink"
+                        >
+                            {{ g.recipe.title }}
+                        </Link>
+                        <span v-else class="line-clamp-1">Recept verwijderd</span>
+                        <span class="font-mono tabular-nums text-ink-faint">
+                            {{ formatShortDate(g.completed_at!) }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
+
+    <Sheet :open="editing !== null" @update:open="(v) => { if (!v) closeEditNote(); }">
+        <SheetContent side="bottom" class="rounded-t-3xl border-rule bg-cream-soft">
+            <SheetHeader class="text-left">
+                <SheetTitle class="font-display text-2xl">
+                    {{ editing?.recipe?.title ?? 'Notitie' }}
+                </SheetTitle>
+                <SheetDescription>
+                    Wat viel op? Wat ga je volgende keer anders doen?
+                </SheetDescription>
+            </SheetHeader>
+            <textarea
+                v-model="noteDraft"
+                autofocus
+                class="mt-3 min-h-[160px] w-full rounded-xl border border-rule bg-cream px-4 py-3 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
+                placeholder="Te zout, volgende keer minder bouillon..."
+            />
+            <div class="mt-4 flex items-center justify-end gap-2">
+                <button
+                    type="button"
+                    class="rounded-full border border-rule px-5 py-2.5 text-sm font-semibold text-ink-soft transition hover:bg-ink/5"
+                    @click="closeEditNote"
+                >
+                    Annuleren
+                </button>
+                <button
+                    type="button"
+                    class="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-ink shadow-tile transition active:scale-[0.98] hover:bg-[#d35a31] disabled:opacity-50"
+                    :disabled="saving"
+                    @click="saveNote"
+                >
+                    {{ saving ? 'Opslaan…' : 'Opslaan' }}
+                </button>
+            </div>
+        </SheetContent>
+    </Sheet>
 </template>

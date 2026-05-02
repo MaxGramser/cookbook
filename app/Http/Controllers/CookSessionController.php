@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CookSessions\CompleteCookSession;
+use App\Actions\CookSessions\PauseCookSession;
+use App\Actions\CookSessions\ResumeCookSession;
+use App\Actions\CookSessions\StartCookSession;
+use App\Actions\CookSessions\ToggleCookSessionIngredient;
+use App\Actions\CookSessions\ToggleCookSessionStep;
+use App\Actions\CookSessions\UpdateCookSession;
 use App\Models\CookSession;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
@@ -13,15 +20,11 @@ use Inertia\Response;
 
 class CookSessionController extends Controller
 {
-    public function store(Request $request, Recipe $recipe): RedirectResponse
+    public function store(Request $request, Recipe $recipe, StartCookSession $action): RedirectResponse
     {
         abort_if((int) $recipe->user_id !== (int) $request->user()->id, 403);
 
-        $session = $recipe->cookSessions()->create([
-            'user_id' => $request->user()->id,
-            'servings_multiplier' => 1,
-            'started_at' => now(),
-        ]);
+        $session = $action->handle($request->user(), $recipe);
 
         return redirect()->route('cook.show', $session);
     }
@@ -61,7 +64,7 @@ class CookSessionController extends Controller
         ]);
     }
 
-    public function update(Request $request, CookSession $session): RedirectResponse
+    public function update(Request $request, CookSession $session, UpdateCookSession $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
 
@@ -70,76 +73,51 @@ class CookSessionController extends Controller
             'notes' => ['sometimes', 'nullable', 'string'],
         ]);
 
-        $session->update($data);
+        $action->handle($session, $data);
 
         return back();
     }
 
-    public function complete(Request $request, CookSession $session): RedirectResponse
+    public function complete(Request $request, CookSession $session, CompleteCookSession $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
-
-        if ($session->completed_at === null) {
-            $session->update([
-                'completed_at' => now(),
-                'paused_seconds' => self::resolvePausedSeconds($session),
-                'paused_at' => null,
-            ]);
-        }
+        $action->handle($session);
 
         return redirect()->route('recipes.show', $session->recipe_id);
     }
 
-    public function pause(Request $request, CookSession $session): RedirectResponse
+    public function pause(Request $request, CookSession $session, PauseCookSession $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
-
-        if ($session->completed_at !== null || $session->paused_at !== null) {
-            return back();
-        }
-
-        $session->update(['paused_at' => now()]);
+        $action->handle($session);
 
         return back();
     }
 
-    public function resume(Request $request, CookSession $session): RedirectResponse
+    public function resume(Request $request, CookSession $session, ResumeCookSession $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
-
-        if ($session->completed_at !== null || $session->paused_at === null) {
-            return back();
-        }
-
-        $session->update([
-            'paused_seconds' => self::resolvePausedSeconds($session),
-            'paused_at' => null,
-        ]);
+        $action->handle($session);
 
         return back();
-    }
-
-    private static function resolvePausedSeconds(CookSession $session): int
-    {
-        $accumulated = (int) $session->paused_seconds;
-        if ($session->paused_at === null) {
-            return $accumulated;
-        }
-
-        return $accumulated + max(0, now()->diffInSeconds($session->paused_at, false) * -1);
     }
 
     public function destroy(Request $request, CookSession $session): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
 
+        $wasCompleted = $session->isCompleted();
         $recipeId = $session->recipe_id;
         $session->delete();
+
+        if ($wasCompleted) {
+            return redirect()->route('history.index');
+        }
 
         return redirect()->route('recipes.show', $recipeId);
     }
 
-    public function toggleIngredient(Request $request, CookSession $session, RecipeIngredient $ingredient): RedirectResponse
+    public function toggleIngredient(Request $request, CookSession $session, RecipeIngredient $ingredient, ToggleCookSessionIngredient $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
         abort_if((int) $ingredient->recipe_id !== (int) $session->recipe_id, 404);
@@ -148,18 +126,12 @@ class CookSessionController extends Controller
             'checked' => ['required', 'boolean'],
         ]);
 
-        if ($data['checked']) {
-            $session->checkedIngredients()->syncWithoutDetaching([
-                $ingredient->id => ['checked_at' => now()],
-            ]);
-        } else {
-            $session->checkedIngredients()->detach($ingredient->id);
-        }
+        $action->handle($session, $ingredient, (bool) $data['checked']);
 
         return back();
     }
 
-    public function toggleStep(Request $request, CookSession $session, RecipeStep $step): RedirectResponse
+    public function toggleStep(Request $request, CookSession $session, RecipeStep $step, ToggleCookSessionStep $action): RedirectResponse
     {
         $this->authorizeOwner($request, $session);
         abort_if((int) $step->recipe_id !== (int) $session->recipe_id, 404);
@@ -168,13 +140,7 @@ class CookSessionController extends Controller
             'checked' => ['required', 'boolean'],
         ]);
 
-        if ($data['checked']) {
-            $session->checkedSteps()->syncWithoutDetaching([
-                $step->id => ['checked_at' => now()],
-            ]);
-        } else {
-            $session->checkedSteps()->detach($step->id);
-        }
+        $action->handle($session, $step, (bool) $data['checked']);
 
         return back();
     }

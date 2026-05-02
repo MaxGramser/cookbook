@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CookSessionController;
+use App\Http\Controllers\GrocerySessionController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
@@ -15,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [RecipeController::class, 'index'])->name('dashboard');
 
     Route::resource('recipes', RecipeController::class);
+    Route::post('recipes/{recipe}/star', [RecipeController::class, 'toggleStar'])->name('recipes.star');
     Route::post('recipes/import', [RecipeImportController::class, 'store'])->name('recipes.import');
     Route::post('recipes/import/text', [RecipeImportController::class, 'storeFromText'])->name('recipes.import.text');
 
@@ -27,6 +29,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('cook/{session}', [CookSessionController::class, 'destroy'])->name('cook.destroy');
     Route::post('cook/{session}/ingredients/{ingredient}', [CookSessionController::class, 'toggleIngredient'])->name('cook.ingredient.toggle');
     Route::post('cook/{session}/steps/{step}', [CookSessionController::class, 'toggleStep'])->name('cook.step.toggle');
+
+    Route::post('recipes/{recipe}/grocery', [GrocerySessionController::class, 'store'])->name('grocery.start');
+    Route::get('grocery/{session}', [GrocerySessionController::class, 'show'])->name('grocery.show');
+    Route::post('grocery/{session}/phase', [GrocerySessionController::class, 'phase'])->name('grocery.phase');
+    Route::post('grocery/{session}/complete', [GrocerySessionController::class, 'complete'])->name('grocery.complete');
+    Route::delete('grocery/{session}', [GrocerySessionController::class, 'destroy'])->name('grocery.destroy');
+    Route::post('grocery/{session}/ingredients/{ingredient}', [GrocerySessionController::class, 'toggleIngredient'])->name('grocery.ingredient.toggle');
 
     Route::get('history', [HistoryController::class, 'index'])->name('history.index');
 });

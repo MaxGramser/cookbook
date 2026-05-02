@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'title', 'source_url', 'image_path', 'servings', 'cook_time_minutes', 'notes'])]
+#[Fillable(['user_id', 'title', 'source_url', 'image_path', 'servings', 'cook_time_minutes', 'notes', 'starred_at', 'last_cooked_at', 'cooked_count'])]
 class Recipe extends Model
 {
     /** @use HasFactory<RecipeFactory> */
@@ -20,7 +20,15 @@ class Recipe extends Model
         return [
             'servings' => 'integer',
             'cook_time_minutes' => 'integer',
+            'starred_at' => 'datetime',
+            'last_cooked_at' => 'datetime',
+            'cooked_count' => 'integer',
         ];
+    }
+
+    public function isStarred(): bool
+    {
+        return $this->starred_at !== null;
     }
 
     public function user(): BelongsTo
@@ -41,5 +49,10 @@ class Recipe extends Model
     public function cookSessions(): HasMany
     {
         return $this->hasMany(CookSession::class);
+    }
+
+    public function grocerySessions(): HasMany
+    {
+        return $this->hasMany(GrocerySession::class);
     }
 }

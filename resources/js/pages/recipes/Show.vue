@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { ChefHat, Clock, ExternalLink, Pencil, Play, Printer, Trash2, Users } from 'lucide-vue-next';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { ChefHat, Clock, ExternalLink, Pencil, Play, Printer, ShoppingBasket, Star, Trash2, Users } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import CookSessionController from '@/actions/App/Http/Controllers/CookSessionController';
+import GrocerySessionController from '@/actions/App/Http/Controllers/GrocerySessionController';
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
 import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
-import { computed, ref } from 'vue';
 import type { CookSessionSummary, Recipe } from '@/types/recipes';
 
 const props = defineProps<{
@@ -30,10 +31,19 @@ function confirmDelete(event: Event): void {
     }
 }
 
+function toggleStar(): void {
+    router.post(
+        RecipeController.toggleStar.url(props.recipe.id),
+        {},
+        { preserveScroll: true, preserveState: false },
+    );
+}
+
 function sessionDuration(session: CookSessionSummary): string | null {
     if (!session.started_at || !session.completed_at) {
         return null;
     }
+
     return formatDuration(durationBetween(session.started_at, session.completed_at));
 }
 
@@ -41,6 +51,7 @@ function formatDate(value: string | null | undefined): string {
     if (!value) {
         return '';
     }
+
     return new Intl.DateTimeFormat('nl-NL', {
         dateStyle: 'medium',
         timeStyle: 'short',
@@ -114,12 +125,37 @@ function formatDate(value: string | null | undefined): string {
                             <Play class="size-4" /> Start koken
                         </button>
                     </Form>
+                    <Form
+                        v-bind="GrocerySessionController.store.form({ recipe: recipe.id })"
+                        v-slot="{ processing }"
+                    >
+                        <button
+                            type="submit"
+                            :disabled="processing"
+                            class="inline-flex items-center gap-2 rounded-full bg-block-lime px-5 py-2.5 text-sm font-medium text-ink transition active:scale-[0.98] hover:bg-[#b5d23f] disabled:opacity-50"
+                        >
+                            <ShoppingBasket class="size-4" /> Boodschappen
+                        </button>
+                    </Form>
                     <Link
                         :href="editRecipe(recipe.id)"
                         class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"
                     >
                         <Pencil class="size-4" /> Bewerken
                     </Link>
+                    <button
+                        type="button"
+                        :class="[
+                            'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition',
+                            recipe.is_starred
+                                ? 'bg-brand text-ink hover:bg-[#d35a31]'
+                                : 'border border-cream/25 hover:bg-cream/10',
+                        ]"
+                        @click="toggleStar"
+                    >
+                        <Star class="size-4" :fill="recipe.is_starred ? 'currentColor' : 'none'" />
+                        {{ recipe.is_starred ? 'Favoriet' : 'Markeer als favoriet' }}
+                    </button>
                     <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"

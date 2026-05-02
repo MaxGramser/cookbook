@@ -150,6 +150,41 @@ test('history payload exposes started_at and completed_at for duration', functio
         );
 });
 
+test('history payload exposes notes for editing', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    CookSession::factory()->for($recipe)->for($user)->completed()->create([
+        'notes' => 'Lekker, maar te zout',
+    ]);
+
+    $this->actingAs($user)
+        ->get('/history')
+        ->assertInertia(fn ($page) => $page->where('sessions.0.notes', 'Lekker, maar te zout')
+        );
+});
+
+test('deleting a completed session redirects to history', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    $session = CookSession::factory()->for($recipe)->for($user)->completed()->create();
+
+    $this->actingAs($user)
+        ->delete("/cook/{$session->id}")
+        ->assertRedirect('/history');
+
+    expect(CookSession::query()->find($session->id))->toBeNull();
+});
+
+test('deleting an in-progress session redirects to recipe', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create();
+    $session = CookSession::factory()->for($recipe)->for($user)->create();
+
+    $this->actingAs($user)
+        ->delete("/cook/{$session->id}")
+        ->assertRedirect("/recipes/{$recipe->id}");
+});
+
 test('user cannot access another users session', function () {
     $owner = User::factory()->create(['email_verified_at' => now()]);
     $other = User::factory()->create(['email_verified_at' => now()]);

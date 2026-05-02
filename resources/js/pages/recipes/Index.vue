@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     ChefHat,
     ChevronDown,
@@ -9,9 +9,11 @@ import {
     PencilLine,
     Plus,
     Search,
-    Users,
+    Star,
+    X,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import ImportUrlDialog from '@/components/ImportUrlDialog.vue';
 import PasteRecipeDialog from '@/components/PasteRecipeDialog.vue';
 import {
@@ -21,10 +23,13 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { dashboard } from '@/routes';
-import { create as createRecipe, show as showRecipe } from '@/routes/recipes';
-import type { RecipeSummary } from '@/types/recipes';
+import { create as createRecipe, index as recipesIndex, show as showRecipe } from '@/routes/recipes';
+import type { RecipeListFilters, RecipeSummary } from '@/types/recipes';
 
-const props = defineProps<{ recipes: RecipeSummary[] }>();
+const props = defineProps<{
+    recipes: RecipeSummary[];
+    filters: RecipeListFilters;
+}>();
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: dashboard() }] },
@@ -36,15 +41,72 @@ const firstName = computed<string>(() => userName.value.split(' ')[0] ?? userNam
 
 const urlOpen = ref<boolean>(false);
 const pasteOpen = ref<boolean>(false);
-const search = ref<string>('');
 
-const filtered = computed<RecipeSummary[]>(() => {
-    const q = search.value.trim().toLowerCase();
-    if (!q) {
-        return props.recipes;
-    }
-    return props.recipes.filter((r) => r.title.toLowerCase().includes(q));
+const search = ref<string>(props.filters.q ?? '');
+const starredOnly = ref<boolean>(!!props.filters.starred);
+const cookedOnly = ref<boolean>(!!props.filters.cooked);
+const timeBucket = ref<RecipeListFilters['time']>(props.filters.time ?? null);
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+function applyFilters(replace = false): void {
+    const query: Record<string, string> = {};
+    const q = search.value.trim();
+    if (q !== '') query.q = q;
+    if (starredOnly.value) query.starred = '1';
+    if (cookedOnly.value) query.cooked = '1';
+    if (timeBucket.value) query.time = timeBucket.value;
+
+    router.get(recipesIndex().url, query, {
+        preserveState: true,
+        preserveScroll: true,
+        replace,
+        only: ['recipes', 'filters'],
+    });
+}
+
+watch(search, () => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => applyFilters(true), 220);
 });
+
+watch([starredOnly, cookedOnly, timeBucket], () => applyFilters(true));
+
+function clearAll(): void {
+    search.value = '';
+    starredOnly.value = false;
+    cookedOnly.value = false;
+    timeBucket.value = null;
+}
+
+const hasActiveFilter = computed<boolean>(
+    () => search.value.trim() !== '' || starredOnly.value || cookedOnly.value || timeBucket.value !== null,
+);
+
+function setTime(value: RecipeListFilters['time']): void {
+    timeBucket.value = timeBucket.value === value ? null : value;
+}
+
+function toggleStar(recipe: RecipeSummary, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    router.post(
+        RecipeController.toggleStar.url(recipe.id),
+        {},
+        { preserveScroll: true, preserveState: true, only: ['recipes', 'filters'] },
+    );
+}
+
+function lastCookedLabel(recipe: RecipeSummary): string | null {
+    if (!recipe.last_cooked_at) return null;
+    const date = new Date(recipe.last_cooked_at);
+    const days = Math.round((Date.now() - date.getTime()) / 86_400_000);
+    if (days < 1) return 'vandaag gekookt';
+    if (days < 2) return 'gisteren gekookt';
+    if (days < 14) return `${days}d geleden`;
+    if (days < 60) return `${Math.round(days / 7)}w geleden`;
+    return `${Math.round(days / 30)}mnd geleden`;
+}
 
 const tilePalette = ['lime', 'pink', 'sky', 'cream', 'accent', 'ink'] as const;
 type Tile = (typeof tilePalette)[number];
@@ -119,50 +181,89 @@ const tileBgClass: Record<Tile, string> = {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-
-            <div class="mt-6 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl bg-cream/10 p-4">
-                    <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-cream/55">
-                        Recepten
-                    </p>
-                    <p class="mt-2 font-display text-3xl tabular-nums">
-                        {{ recipes.length }}
-                    </p>
-                </div>
-                <div class="rounded-2xl bg-block-lime p-4 text-ink">
-                    <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/60">
-                        Klaar om te koken
-                    </p>
-                    <p class="mt-2 font-display text-3xl tabular-nums">
-                        {{ recipes.length }}
-                    </p>
-                </div>
-                <div class="rounded-2xl bg-brand p-4 text-ink">
-                    <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/65">
-                        Laatste import
-                    </p>
-                    <p class="mt-2 font-display text-3xl">
-                        <span v-if="recipes.length > 0">vers</span>
-                        <span v-else class="italic">nog niets</span>
-                    </p>
-                </div>
-            </div>
         </div>
 
-        <label
-            class="flex items-center gap-3 rounded-full border border-rule bg-cream-soft px-5 py-3 transition focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30"
-        >
-            <Search class="size-4 text-ink-faint" />
-            <input
-                v-model="search"
-                type="search"
-                placeholder="Zoek in je kookboek..."
-                class="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
-            />
-            <span class="rounded-full bg-ink/5 px-2 py-0.5 text-xs tabular-nums text-ink-soft">
-                {{ filtered.length }}
-            </span>
-        </label>
+        <div class="flex flex-col gap-3">
+            <label
+                class="flex items-center gap-3 rounded-full border border-rule bg-cream-soft px-5 py-3 transition focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30"
+            >
+                <Search class="size-4 text-ink-faint" />
+                <input
+                    v-model="search"
+                    type="search"
+                    placeholder="Zoek op titel, ingrediënt of notitie..."
+                    class="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
+                />
+                <button
+                    v-if="search"
+                    type="button"
+                    class="grid size-6 place-items-center rounded-full bg-ink/10 text-ink-soft transition hover:bg-ink/20"
+                    @click="search = ''"
+                >
+                    <X class="size-3" />
+                </button>
+                <span class="rounded-full bg-ink/5 px-2 py-0.5 text-xs tabular-nums text-ink-soft">
+                    {{ recipes.length }}
+                </span>
+            </label>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    :class="[
+                        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                        starredOnly
+                            ? 'border-brand bg-brand text-ink'
+                            : 'border-rule bg-cream-soft text-ink-soft hover:bg-ink/5',
+                    ]"
+                    @click="starredOnly = !starredOnly"
+                >
+                    <Star class="size-3.5" :fill="starredOnly ? 'currentColor' : 'none'" />
+                    Favorieten
+                </button>
+                <button
+                    type="button"
+                    :class="[
+                        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                        cookedOnly
+                            ? 'border-ink bg-ink text-cream'
+                            : 'border-rule bg-cream-soft text-ink-soft hover:bg-ink/5',
+                    ]"
+                    @click="cookedOnly = !cookedOnly"
+                >
+                    <ChefHat class="size-3.5" />
+                    Eerder gekookt
+                </button>
+                <span class="mx-1 h-5 w-px bg-rule" />
+                <button
+                    v-for="opt in [
+                        { key: 'quick', label: '< 20 min' },
+                        { key: 'medium', label: '20–45 min' },
+                        { key: 'long', label: '> 45 min' },
+                    ] as const"
+                    :key="opt.key"
+                    type="button"
+                    :class="[
+                        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                        timeBucket === opt.key
+                            ? 'border-ink bg-ink text-cream'
+                            : 'border-rule bg-cream-soft text-ink-soft hover:bg-ink/5',
+                    ]"
+                    @click="setTime(opt.key)"
+                >
+                    <Clock class="size-3.5" />
+                    {{ opt.label }}
+                </button>
+                <button
+                    v-if="hasActiveFilter"
+                    type="button"
+                    class="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-ink/5"
+                    @click="clearAll"
+                >
+                    <X class="size-3.5" /> wissen
+                </button>
+            </div>
+        </div>
 
         <div
             v-if="recipes.length === 0"
@@ -171,9 +272,15 @@ const tileBgClass: Record<Tile, string> = {
             <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-ink text-cream">
                 <ChefHat class="size-5" />
             </div>
-            <h2 class="font-display text-2xl">Je kookboek is nog leeg.</h2>
+            <h2 class="font-display text-2xl">
+                {{ hasActiveFilter ? 'Niets gevonden.' : 'Je kookboek is nog leeg.' }}
+            </h2>
             <p class="mt-2 text-sm text-ink-soft">
-                Klik op "Recept toevoegen" en plak een link, een caption of begin handmatig.
+                {{
+                    hasActiveFilter
+                        ? 'Pas je filters aan of zoek op een ander woord.'
+                        : 'Klik op "Recept toevoegen" en plak een link, een caption of begin handmatig.'
+                }}
             </p>
         </div>
 
@@ -182,7 +289,7 @@ const tileBgClass: Record<Tile, string> = {
             class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
             <Link
-                v-for="(recipe, idx) in filtered"
+                v-for="(recipe, idx) in recipes"
                 :key="recipe.id"
                 :href="showRecipe(recipe.id)"
                 class="group flex flex-col overflow-hidden rounded-3xl bg-cream-soft transition hover:-translate-y-1 hover:shadow-tile-hover"
@@ -200,7 +307,7 @@ const tileBgClass: Record<Tile, string> = {
                     >
                         <ChefHat class="size-10" />
                     </div>
-                    <div class="absolute left-3 top-3 flex gap-1.5">
+                    <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
                         <span
                             v-if="recipe.cook_time_minutes"
                             class="flex items-center gap-1 rounded-full bg-cream-soft/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums backdrop-blur"
@@ -208,26 +315,48 @@ const tileBgClass: Record<Tile, string> = {
                             <Clock class="size-3" /> {{ recipe.cook_time_minutes }}m
                         </span>
                         <span
-                            class="flex items-center gap-1 rounded-full bg-cream-soft/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums backdrop-blur"
+                            v-if="recipe.cooked_count > 0"
+                            class="flex items-center gap-1 rounded-full bg-ink/90 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-cream backdrop-blur"
                         >
-                            <Users class="size-3" /> {{ recipe.servings }}
+                            <ChefHat class="size-3" /> ×{{ recipe.cooked_count }}
                         </span>
                     </div>
-                </div>
-                <div :class="['flex flex-1 items-end gap-3 p-5', tileBgClass[tileColor(idx)]]">
-                    <h3 class="line-clamp-2 flex-1 font-display text-lg leading-tight">
-                        {{ recipe.title }}
-                    </h3>
-                    <span
+                    <button
+                        type="button"
+                        :aria-label="recipe.is_starred ? 'Ster verwijderen' : 'Markeer als favoriet'"
                         :class="[
-                            'grid size-8 shrink-0 place-items-center rounded-full transition group-hover:rotate-12',
-                            tileColor(idx) === 'ink'
-                                ? 'bg-cream text-ink'
-                                : 'bg-ink text-cream',
+                            'absolute right-3 top-3 grid size-9 place-items-center rounded-full backdrop-blur transition active:scale-90',
+                            recipe.is_starred
+                                ? 'bg-brand text-ink'
+                                : 'bg-cream-soft/90 text-ink-soft hover:bg-cream-soft',
                         ]"
+                        @click="toggleStar(recipe, $event)"
                     >
-                        <Plus class="size-4 rotate-45" />
-                    </span>
+                        <Star class="size-4" :fill="recipe.is_starred ? 'currentColor' : 'none'" />
+                    </button>
+                </div>
+                <div :class="['flex flex-1 flex-col gap-2 p-5', tileBgClass[tileColor(idx)]]">
+                    <div class="flex items-end gap-3">
+                        <h3 class="line-clamp-2 flex-1 font-display text-lg leading-tight">
+                            {{ recipe.title }}
+                        </h3>
+                        <span
+                            :class="[
+                                'grid size-8 shrink-0 place-items-center rounded-full transition group-hover:rotate-12',
+                                tileColor(idx) === 'ink'
+                                    ? 'bg-cream text-ink'
+                                    : 'bg-ink text-cream',
+                            ]"
+                        >
+                            <Plus class="size-4 rotate-45" />
+                        </span>
+                    </div>
+                    <p
+                        v-if="lastCookedLabel(recipe)"
+                        class="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70"
+                    >
+                        {{ lastCookedLabel(recipe) }}
+                    </p>
                 </div>
             </Link>
         </div>

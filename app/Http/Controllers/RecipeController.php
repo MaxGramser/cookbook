@@ -2,26 +2,48 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Recipes\SearchRecipes;
+use App\Actions\Recipes\StoreRecipe;
+use App\Actions\Recipes\ToggleRecipeStar;
+use App\Actions\Recipes\UpdateRecipe;
 use App\Http\Requests\RecipeStoreRequest;
 use App\Http\Requests\RecipeUpdateRequest;
 use App\Models\Recipe;
-use App\Support\Units\IngredientNormalizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RecipeController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, SearchRecipes $search): Response
     {
-        $recipes = $request->user()->recipes()
-            ->orderByDesc('created_at')
-            ->get(['id', 'title', 'image_path', 'cook_time_minutes', 'servings']);
+        $filters = [
+            'q' => $request->string('q')->toString(),
+            'starred' => $request->boolean('starred'),
+            'cooked' => $request->boolean('cooked'),
+            'time' => $request->string('time')->toString() ?: null,
+        ];
+
+        $recipes = $search->handle($request->user(), $filters);
 
         return Inertia::render('recipes/Index', [
-            'recipes' => $recipes,
+            'recipes' => $recipes->map(fn (Recipe $r) => [
+                'id' => $r->id,
+                'title' => $r->title,
+                'image_path' => $r->image_path,
+                'cook_time_minutes' => $r->cook_time_minutes,
+                'servings' => $r->servings,
+                'is_starred' => $r->starred_at !== null,
+                'cooked_count' => (int) $r->cooked_count,
+                'last_cooked_at' => $r->last_cooked_at,
+            ])->values(),
+            'filters' => [
+                'q' => $filters['q'],
+                'starred' => $filters['starred'],
+                'cooked' => $filters['cooked'],
+                'time' => $filters['time'],
+            ],
         ]);
     }
 
@@ -30,26 +52,23 @@ class RecipeController extends Controller
         return Inertia::render('recipes/Create');
     }
 
-    public function store(RecipeStoreRequest $request): RedirectResponse
+    public function store(RecipeStoreRequest $request, StoreRecipe $action): RedirectResponse
     {
-        $recipe = DB::transaction(function () use ($request) {
-            $recipe = $request->user()->recipes()->create([
-                'title' => $request->string('title'),
+        $recipe = $action->handle(
+            $request->user(),
+            [
+                'title' => (string) $request->string('title'),
                 'source_url' => $request->input('source_url'),
                 'servings' => $request->integer('servings'),
                 'cook_time_minutes' => $request->filled('cook_time_minutes')
                     ? $request->integer('cook_time_minutes')
                     : null,
                 'notes' => $request->input('notes'),
-                'image_path' => $request->hasFile('image')
-                    ? $request->file('image')->store('recipes', 'public')
-                    : null,
-            ]);
-
-            $this->syncIngredientsAndSteps($recipe, $request->input('ingredients', []), $request->input('steps', []));
-
-            return $recipe;
-        });
+            ],
+            $request->input('ingredients', []),
+            $request->input('steps', []),
+            $request->file('image'),
+        );
 
         return redirect()->route('recipes.show', $recipe);
     }
@@ -61,7 +80,21 @@ class RecipeController extends Controller
         $recipe->load(['ingredients', 'steps']);
 
         return Inertia::render('recipes/Show', [
-            'recipe' => $recipe,
+            'recipe' => [
+                'id' => $recipe->id,
+                'user_id' => $recipe->user_id,
+                'title' => $recipe->title,
+                'source_url' => $recipe->source_url,
+                'image_path' => $recipe->image_path,
+                'servings' => $recipe->servings,
+                'cook_time_minutes' => $recipe->cook_time_minutes,
+                'notes' => $recipe->notes,
+                'is_starred' => $recipe->starred_at !== null,
+                'cooked_count' => (int) $recipe->cooked_count,
+                'last_cooked_at' => $recipe->last_cooked_at,
+                'ingredients' => $recipe->ingredients,
+                'steps' => $recipe->steps,
+            ],
             'recentSessions' => $recipe->cookSessions()
                 ->where('user_id', $request->user()->id)
                 ->orderByDesc('started_at')
@@ -81,26 +114,23 @@ class RecipeController extends Controller
         ]);
     }
 
-    public function update(RecipeUpdateRequest $request, Recipe $recipe): RedirectResponse
+    public function update(RecipeUpdateRequest $request, Recipe $recipe, UpdateRecipe $action): RedirectResponse
     {
-        DB::transaction(function () use ($request, $recipe) {
-            $recipe->update([
-                'title' => $request->string('title'),
+        $action->handle(
+            $recipe,
+            [
+                'title' => (string) $request->string('title'),
                 'source_url' => $request->input('source_url'),
                 'servings' => $request->integer('servings'),
                 'cook_time_minutes' => $request->filled('cook_time_minutes')
                     ? $request->integer('cook_time_minutes')
                     : null,
                 'notes' => $request->input('notes'),
-                ...($request->hasFile('image')
-                    ? ['image_path' => $request->file('image')->store('recipes', 'public')]
-                    : []),
-            ]);
-
-            $recipe->ingredients()->delete();
-            $recipe->steps()->delete();
-            $this->syncIngredientsAndSteps($recipe, $request->input('ingredients', []), $request->input('steps', []));
-        });
+            ],
+            $request->input('ingredients', []),
+            $request->input('steps', []),
+            $request->file('image'),
+        );
 
         return redirect()->route('recipes.show', $recipe);
     }
@@ -113,47 +143,12 @@ class RecipeController extends Controller
         return redirect()->route('recipes.index');
     }
 
-    /**
-     * @param  array<int, array{section?: ?string, quantity_text?: ?string, unit_text?: ?string, name: string, raw_text?: ?string}>  $ingredients
-     * @param  array<int, array{section?: ?string, body: string}>  $steps
-     */
-    private function syncIngredientsAndSteps(Recipe $recipe, array $ingredients, array $steps): void
+    public function toggleStar(Request $request, Recipe $recipe, ToggleRecipeStar $action): RedirectResponse
     {
-        foreach (array_values($ingredients) as $i => $row) {
-            $normalized = IngredientNormalizer::fromParts(
-                $row['quantity_text'] ?? null,
-                $row['unit_text'] ?? null,
-                $row['name'],
-                $row['raw_text'] ?? null,
-            );
+        $this->authorizeOwner($request, $recipe);
+        $action->handle($recipe);
 
-            $recipe->ingredients()->create([
-                'section' => self::normalizeSection($row['section'] ?? null),
-                'position' => $i + 1,
-                'name' => $normalized['name'],
-                'quantity' => $normalized['quantity'],
-                'unit' => $normalized['unit'],
-                'raw_text' => $normalized['raw_text'],
-            ]);
-        }
-
-        foreach (array_values($steps) as $i => $row) {
-            $recipe->steps()->create([
-                'section' => self::normalizeSection($row['section'] ?? null),
-                'position' => $i + 1,
-                'body' => $row['body'],
-            ]);
-        }
-    }
-
-    private static function normalizeSection(?string $section): ?string
-    {
-        if ($section === null) {
-            return null;
-        }
-        $trimmed = trim($section);
-
-        return $trimmed === '' ? null : $trimmed;
+        return back();
     }
 
     private function authorizeOwner(Request $request, Recipe $recipe): void

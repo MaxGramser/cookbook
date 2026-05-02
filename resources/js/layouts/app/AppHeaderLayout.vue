@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ActiveCookSessionPill from '@/components/ActiveCookSessionPill.vue';
+import ActiveGrocerySessionPill from '@/components/ActiveGrocerySessionPill.vue';
 import AppContent from '@/components/AppContent.vue';
 import AppHeader from '@/components/AppHeader.vue';
 import AppShell from '@/components/AppShell.vue';
@@ -22,6 +23,7 @@ withDefaults(defineProps<Props>(), {
             <slot />
         </AppContent>
         <ActiveCookSessionPill />
+        <ActiveGrocerySessionPill />
         <Toaster />
     </AppShell>
 </template>
