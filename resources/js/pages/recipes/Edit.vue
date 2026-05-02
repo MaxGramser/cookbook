@@ -163,6 +163,7 @@ const pillBtn =
                 <div class="flex flex-col gap-1.5 md:col-span-2">
                     <label for="source_url" :class="labelClass">Bron URL (optioneel)</label>
                     <input id="source_url" v-model="form.source_url" type="url" :class="inputClass" />
+                    <InputError :message="form.errors.source_url" />
                 </div>
 
                 <div class="flex flex-col gap-1.5 md:col-span-2">
@@ -177,11 +178,12 @@ const pillBtn =
                         <input
                             id="image"
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.heif"
                             class="hidden"
                             @change="onImage"
                         />
                     </label>
+                    <InputError :message="form.errors.image" />
                 </div>
             </div>
         </section>
@@ -235,6 +237,7 @@ const pillBtn =
                     </div>
                 </template>
             </div>
+            <InputError class="mt-3" :message="form.errors.ingredients" />
         </section>
 
         <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
@@ -290,6 +293,7 @@ const pillBtn =
                     </div>
                 </template>
             </div>
+            <InputError class="mt-3" :message="form.errors.steps" />
         </section>
 
         <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
@@ -302,6 +306,7 @@ const pillBtn =
                 placeholder="Volgende keer minder zout..."
                 class="min-h-[120px] w-full rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
+            <InputError class="mt-2" :message="form.errors.notes" />
         </section>
 
         <div class="flex flex-wrap items-center justify-end gap-2">

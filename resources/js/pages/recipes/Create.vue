@@ -172,7 +172,7 @@ const pillBtn =
                         </span>
                         <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.heif"
                             class="hidden"
                             @change="onImage"
                         />
@@ -300,6 +300,7 @@ const pillBtn =
                 placeholder="Iets dat je niet wil vergeten..."
                 class="min-h-[120px] w-full rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
+            <InputError class="mt-2" :message="form.errors.notes" />
         </section>
 
         <div class="flex flex-wrap items-center justify-end gap-2">

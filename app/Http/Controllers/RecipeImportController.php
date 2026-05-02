@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Actions\Recipes\ImportRecipeFromText;
 use App\Actions\Recipes\ImportRecipeFromUrl;
+use App\Concerns\ImageUploadValidationRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
 
 class RecipeImportController extends Controller
 {
+    use ImageUploadValidationRules;
+
     public function store(Request $request, ImportRecipeFromUrl $action): RedirectResponse
     {
         $data = $request->validate([
@@ -27,10 +30,13 @@ class RecipeImportController extends Controller
 
     public function storeFromText(Request $request, ImportRecipeFromText $action): RedirectResponse
     {
-        $data = $request->validate([
-            'text' => ['required', 'string', 'min:20', 'max:20000'],
-            'image' => ['nullable', 'image', 'max:8192'],
-        ]);
+        $data = $request->validate(
+            [
+                'text' => ['required', 'string', 'min:20', 'max:20000'],
+                'image' => $this->imageUploadRules(),
+            ],
+            $this->imageUploadMessages(),
+        );
 
         try {
             $recipe = $action->handle(

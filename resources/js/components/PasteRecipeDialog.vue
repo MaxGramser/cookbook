@@ -109,7 +109,7 @@ function submit(): void {
                         <input
                             id="image"
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.heif"
                             class="hidden"
                             @change="onImage"
                         />

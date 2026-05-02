@@ -28,9 +28,15 @@ test('importing a recipe URL stores a metric recipe and downloads its image', fu
     ]);
     $html = "<html><body><script type=\"application/ld+json\">{$jsonLd}</script></body></html>";
 
+    $im = new Imagick;
+    $im->newImage(200, 200, 'red');
+    $im->setImageFormat('jpeg');
+    $jpegBlob = $im->getImageBlob();
+    $im->clear();
+
     Http::fake([
         'example.com/recipe' => Http::response($html, 200, ['Content-Type' => 'text/html']),
-        'example.com/p.jpg' => Http::response('IMGBYTES', 200, ['Content-Type' => 'image/jpeg']),
+        'example.com/p.jpg' => Http::response($jpegBlob, 200, ['Content-Type' => 'image/jpeg']),
     ]);
 
     RecipeExtractor::fake([

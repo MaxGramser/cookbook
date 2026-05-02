@@ -5,10 +5,10 @@ namespace App\Actions\Recipes;
 use App\Ai\Agents\RecipeExtractor;
 use App\Models\Recipe;
 use App\Models\User;
+use App\Support\Media\ImageProcessor;
 use App\Support\Recipes\RecipeHtmlStripper;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 final class ImportRecipeFromUrl
@@ -16,6 +16,7 @@ final class ImportRecipeFromUrl
     public function __construct(
         private RecipeExtractor $extractor,
         private PersistExtractedRecipe $persister,
+        private ImageProcessor $imageProcessor,
     ) {}
 
     public function handle(User $user, string $url): Recipe
@@ -74,17 +75,6 @@ final class ImportRecipeFromUrl
             return null;
         }
 
-        $extension = match ($response->header('Content-Type')) {
-            'image/jpeg', 'image/jpg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            'image/gif' => 'gif',
-            default => 'jpg',
-        };
-
-        $filename = 'recipes/'.bin2hex(random_bytes(16)).'.'.$extension;
-        Storage::disk('public')->put($filename, $response->body());
-
-        return $filename;
+        return $this->imageProcessor->processBytes($response->body());
     }
 }

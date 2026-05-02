@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Concerns\ImageUploadValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RecipeUpdateRequest extends FormRequest
 {
+    use ImageUploadValidationRules;
+
     public function authorize(): bool
     {
         $recipe = $this->route('recipe');
@@ -25,7 +28,7 @@ class RecipeUpdateRequest extends FormRequest
             'servings' => ['required', 'integer', 'min:1', 'max:99'],
             'cook_time_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'notes' => ['nullable', 'string'],
-            'image' => ['nullable', 'image', 'max:8192'],
+            'image' => $this->imageUploadRules(),
 
             'ingredients' => ['required', 'array', 'min:1'],
             'ingredients.*.section' => ['nullable', 'string', 'max:120'],
@@ -37,5 +40,13 @@ class RecipeUpdateRequest extends FormRequest
             'steps.*.section' => ['nullable', 'string', 'max:120'],
             'steps.*.body' => ['required', 'string'],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->imageUploadMessages();
     }
 }

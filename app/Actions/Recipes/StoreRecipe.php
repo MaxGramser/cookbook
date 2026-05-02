@@ -4,12 +4,16 @@ namespace App\Actions\Recipes;
 
 use App\Models\Recipe;
 use App\Models\User;
+use App\Support\Media\ImageProcessor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 final class StoreRecipe
 {
-    public function __construct(private SyncIngredientsAndSteps $sync) {}
+    public function __construct(
+        private SyncIngredientsAndSteps $sync,
+        private ImageProcessor $imageProcessor,
+    ) {}
 
     /**
      * @param  array{title: string, source_url?: ?string, servings: int, cook_time_minutes?: ?int, notes?: ?string}  $attributes
@@ -18,14 +22,18 @@ final class StoreRecipe
      */
     public function handle(User $user, array $attributes, array $ingredients, array $steps, ?UploadedFile $image = null): Recipe
     {
-        return DB::transaction(function () use ($user, $attributes, $ingredients, $steps, $image) {
+        $imagePath = $image !== null
+            ? $this->imageProcessor->processUpload($image)
+            : null;
+
+        return DB::transaction(function () use ($user, $attributes, $ingredients, $steps, $imagePath) {
             $recipe = $user->recipes()->create([
                 'title' => $attributes['title'],
                 'source_url' => $attributes['source_url'] ?? null,
                 'servings' => $attributes['servings'],
                 'cook_time_minutes' => $attributes['cook_time_minutes'] ?? null,
                 'notes' => $attributes['notes'] ?? null,
-                'image_path' => $image?->store('recipes', 'public'),
+                'image_path' => $imagePath,
             ]);
 
             $this->sync->handle($recipe, $ingredients, $steps);
