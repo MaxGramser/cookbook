@@ -5,6 +5,7 @@ use App\Http\Controllers\GrocerySessionController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
+use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -38,6 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('grocery/{session}/ingredients/{ingredient}', [GrocerySessionController::class, 'toggleIngredient'])->name('grocery.ingredient.toggle');
 
     Route::get('history', [HistoryController::class, 'index'])->name('history.index');
+
+    Route::get('tags', [TagController::class, 'index'])->name('tags.index');
+    Route::post('tags', [TagController::class, 'store'])->name('tags.store');
 });
 
 require __DIR__.'/settings.php';

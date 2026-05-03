@@ -3,6 +3,7 @@
 namespace App\Actions\Recipes;
 
 use App\Models\Recipe;
+use App\Models\Tag;
 use App\Models\User;
 use App\Support\Recipes\TimerParser;
 use App\Support\Units\IngredientNormalizer;
@@ -64,6 +65,11 @@ final class PersistExtractedRecipe
                 ]);
             }
 
+            $tagIds = self::resolveTagIds($extracted);
+            if ($tagIds !== []) {
+                $recipe->tags()->sync($tagIds);
+            }
+
             $position = 0;
             foreach ((array) ($extracted['steps'] ?? []) as $row) {
                 $body = is_string($row)
@@ -86,6 +92,41 @@ final class PersistExtractedRecipe
 
             return $recipe;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>|\ArrayAccess<string, mixed>  $extracted
+     * @return list<int>
+     */
+    private static function resolveTagIds(mixed $extracted): array
+    {
+        $groups = [
+            Tag::GROUP_MEAL_TYPE => (array) ($extracted['meal_types'] ?? []),
+            Tag::GROUP_CUISINE => (array) ($extracted['cuisines'] ?? []),
+            Tag::GROUP_ATTRIBUTE => (array) ($extracted['attributes'] ?? []),
+        ];
+
+        $ids = [];
+        foreach ($groups as $group => $slugs) {
+            $clean = array_values(array_unique(array_filter(
+                array_map(fn ($s) => is_string($s) ? trim($s) : '', $slugs),
+                fn ($s) => $s !== '',
+            )));
+            if ($clean === []) {
+                continue;
+            }
+            $ids = array_merge(
+                $ids,
+                Tag::query()
+                    ->where('group', $group)
+                    ->where('is_system', true)
+                    ->whereIn('slug', $clean)
+                    ->pluck('id')
+                    ->all(),
+            );
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     private static function cleanSection(mixed $section): ?string

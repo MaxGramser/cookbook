@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ImagePlus, Plus, Timer, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import TagChipSelect from '@/components/TagChipSelect.vue';
 import {
     compileIngredients,
     compileSteps,
@@ -12,9 +13,17 @@ import {
     type StepRow,
 } from '@/lib/recipeForm';
 import { index as recipesIndex, show as showRecipe, update as updateRecipe } from '@/routes/recipes';
-import type { Recipe, Unit } from '@/types/recipes';
+import type { Recipe, Tag, Unit } from '@/types/recipes';
 
-const props = defineProps<{ recipe: Recipe }>();
+const props = defineProps<{ recipe: Recipe; tags: Tag[] }>();
+
+const availableTags = ref<Tag[]>([...props.tags]);
+
+function onTagCreated(tag: Tag): void {
+    if (!availableTags.value.some((t) => t.id === tag.id)) {
+        availableTags.value = [...availableTags.value, tag];
+    }
+}
 
 defineOptions({
     layout: {
@@ -42,6 +51,7 @@ const form = useForm({
     cook_time_minutes: props.recipe.cook_time_minutes,
     notes: props.recipe.notes ?? '',
     image: null as File | null,
+    tag_ids: (props.recipe.tags ?? []).map((t) => t.id),
     ingredients: compileIngredients(ingredientRows.value),
     steps: compileSteps(stepRows.value),
 });
@@ -186,6 +196,19 @@ const pillBtn =
                     <InputError :message="form.errors.image" />
                 </div>
             </div>
+        </section>
+
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <h2 class="mb-1 font-display text-2xl leading-tight">Categorieën</h2>
+            <p class="mb-4 text-sm text-ink-soft">
+                Pas de tags aan zodat je het recept later makkelijk terugvindt.
+            </p>
+            <TagChipSelect
+                v-model="form.tag_ids"
+                :tags="availableTags"
+                @tag-created="onTagCreated"
+            />
+            <InputError class="mt-3" :message="form.errors.tag_ids" />
         </section>
 
         <section class="rounded-3xl bg-cream-soft p-5 md:p-6">

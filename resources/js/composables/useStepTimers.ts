@@ -87,22 +87,46 @@ export function useStepTimers(now: Ref<number>) {
     });
 
     function checkForFinished(): void {
+        let anyRunning = false;
         for (const [id, t] of timers.value) {
             if (frozenRemaining.has(id)) {
                 continue;
             }
-            if (!t.finished && now.value >= t.endsAt && !beeped.has(id)) {
+            if (t.finished) {
+                continue;
+            }
+            anyRunning = true;
+            if (now.value >= t.endsAt && !beeped.has(id)) {
                 beeped.add(id);
                 t.finished = true;
                 fireAlarm();
             }
         }
+        maybeTick(now.value, anyRunning);
     }
 
     return { timers, remaining, start, dismiss, pauseAll, resumeAll, checkForFinished };
 }
 
 let audioCtx: AudioContext | null = null;
+let lastTickSecond = 0;
+
+/** Soft once-per-second tick while any timer is running. Audible just enough
+ *  to hint that the timer is alive without becoming annoying. */
+function maybeTick(nowMs: number, anyRunning: boolean): void {
+    if (!anyRunning) {
+        return;
+    }
+    if (audioCtx === null || audioCtx.state !== 'running') {
+        return;
+    }
+    const second = Math.floor(nowMs / 1000);
+    if (second === lastTickSecond) {
+        return;
+    }
+    lastTickSecond = second;
+    emitTone({ frequency: 2200, durationSec: 0.012, gain: 0.008, type: 'sine' });
+}
 
 function getAudioCtx(): AudioContext | null {
     if (audioCtx !== null) {
@@ -138,7 +162,7 @@ function armAudio(): void {
     ];
     for (const { frequency, offsetMs } of melody) {
         window.setTimeout(
-            () => emitTone({ frequency, durationSec: 0.18, gain: 0.22, type: 'triangle' }),
+            () => emitTone({ frequency, durationSec: 0.18, gain: 0.22, type: 'sine' }),
             offsetMs,
         );
     }

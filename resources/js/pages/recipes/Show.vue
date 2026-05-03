@@ -10,7 +10,7 @@ import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
-import type { CookSessionSummary, Recipe } from '@/types/recipes';
+import type { CookSessionSummary, Recipe, Tag, TagColor } from '@/types/recipes';
 
 const props = defineProps<{
     recipe: Recipe;
@@ -57,6 +57,21 @@ function formatDate(value: string | null | undefined): string {
         timeStyle: 'short',
     }).format(new Date(value));
 }
+
+const tagColorClass: Record<TagColor, string> = {
+    cream: 'bg-cream text-ink border-rule',
+    lime: 'bg-block-lime text-ink border-transparent',
+    pink: 'bg-block-pink text-ink border-transparent',
+    sky: 'bg-block-sky text-ink border-transparent',
+    accent: 'bg-brand text-ink border-transparent',
+    ink: 'bg-ink text-cream border-transparent',
+};
+
+function tagFilterUrl(tag: Tag): string {
+    const params = new URLSearchParams();
+    params.set('tags', String(tag.id));
+    return `${recipesIndex().url}?${params.toString()}`;
+}
 </script>
 
 <template>
@@ -100,6 +115,17 @@ function formatDate(value: string | null | undefined): string {
                     >
                         <ExternalLink class="size-3.5" /> bron
                     </a>
+                    <Link
+                        v-for="tag in recipe.tags ?? []"
+                        :key="tag.id"
+                        :href="tagFilterUrl(tag)"
+                        :class="[
+                            'rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-[0.97] hover:-translate-y-px',
+                            tagColorClass[tag.color] ?? tagColorClass.cream,
+                        ]"
+                    >
+                        {{ tag.name }}
+                    </Link>
                 </div>
             </div>
 

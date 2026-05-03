@@ -20,6 +20,19 @@ export type RecipeStep = {
     timer_minutes: number | null;
 };
 
+export type TagGroup = 'meal_type' | 'cuisine' | 'attribute';
+
+export type TagColor = 'cream' | 'lime' | 'pink' | 'sky' | 'accent' | 'ink';
+
+export type Tag = {
+    id: number;
+    group: TagGroup;
+    slug: string;
+    name: string;
+    color: TagColor;
+    is_system?: boolean;
+};
+
 export type RecipeSummary = {
     id: number;
     title: string;
@@ -29,6 +42,7 @@ export type RecipeSummary = {
     is_starred: boolean;
     cooked_count: number;
     last_cooked_at: string | null;
+    tags: Tag[];
 };
 
 export type RecipeListFilters = {
@@ -36,6 +50,7 @@ export type RecipeListFilters = {
     starred: boolean;
     cooked: boolean;
     time: 'quick' | 'medium' | 'long' | null;
+    tag_ids: number[];
 };
 
 export type Paginated<T> = {
@@ -61,6 +76,7 @@ export type Recipe = {
     last_cooked_at?: string | null;
     ingredients: RecipeIngredient[];
     steps: RecipeStep[];
+    tags?: Tag[];
 };
 
 export type CookSessionDetail = {

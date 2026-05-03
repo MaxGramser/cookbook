@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['user_id', 'title', 'source_url', 'image_path', 'servings', 'cook_time_minutes', 'notes', 'starred_at', 'last_cooked_at', 'cooked_count'])]
@@ -54,5 +55,10 @@ class Recipe extends Model
     public function grocerySessions(): HasMany
     {
         return $this->hasMany(GrocerySession::class);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)->orderBy('group')->orderBy('sort');
     }
 }

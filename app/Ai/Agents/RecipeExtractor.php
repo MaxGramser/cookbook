@@ -2,6 +2,8 @@
 
 namespace App\Ai\Agents;
 
+use App\Models\Tag;
+use Database\Seeders\TagSeeder;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
@@ -14,7 +16,11 @@ class RecipeExtractor implements Agent, HasStructuredOutput
 
     public function instructions(): Stringable|string
     {
-        return <<<'TXT'
+        $mealTypes = implode(', ', TagSeeder::slugsFor(Tag::GROUP_MEAL_TYPE));
+        $cuisines = implode(', ', TagSeeder::slugsFor(Tag::GROUP_CUISINE));
+        $attributes = implode(', ', TagSeeder::slugsFor(Tag::GROUP_ATTRIBUTE));
+
+        return <<<TXT
 You extract a single recipe from cleaned HTML/text and return it as structured JSON.
 
 # OUTPUT LANGUAGE — DUTCH
@@ -157,6 +163,65 @@ instruction bodies, prefer the JSON-LD wording if both exist.
     * "unknown" → only when there is no signal at all.
   Use the source's domain, language, and unit choices to decide. When in
   doubt between us and metric for an English-language site, choose us.
+
+# CATEGORIES / TAGS — closed enums
+
+Classify the recipe into three groups. Use ONLY the slugs listed below;
+never invent new ones. When uncertain, leave the array empty (or use
+"unknown" for cuisines).
+
+## meal_types — what kind of meal is this? (multiple allowed)
+
+Allowed: {$mealTypes}
+
+Pick everything that fits. A pasta carbonara is `avondeten`. A muffin is
+both `ontbijt` and `bakken`. A guacamole is `borrelhap`. A fudge sauce is
+`sauzen` and `dessert`. Pancakes are `ontbijt` (and `bakken` if from
+scratch). Don't tag `bijgerecht` for main-course recipes; reserve it for
+clear sides (slaatjes, aardappelpuree als bijgerecht, etc.).
+
+## cuisines — culinary tradition (zero, one, or two)
+
+Allowed: {$cuisines}
+
+Use the recipe's culinary roots, not where the website is hosted.
+Spaghetti carbonara is `italiaans` even on an American blog. Tag two
+cuisines only for clear fusion (Korean tacos: `koreaans` + `mexicaans`).
+For dishes that are global/non-specific (smoothies, fruit salads, basic
+omelet), return an empty array.
+
+## attributes — dish properties (zero to four)
+
+Allowed: {$attributes}
+
+Be conservative — only tag what is unambiguous from the recipe content:
+  - `snel-en-makkelijk`: total time <= 30 min AND <= 8 ingredients AND no
+    advanced techniques. Don't tag for ambiguous mid-effort recipes.
+  - `weekendproject`: total time >= 2 hours OR multi-stage (rising dough,
+    overnight marinade, slow braise, smoking, fermenting).
+  - `one-pot`: cooked in a single vessel (skillet/pot/sheet pan) — explicit
+    sign in the steps, not a guess.
+  - `meal-prep`: source explicitly mentions batch cooking, freezing, or
+    week-ahead preparation.
+  - `vegetarisch`: no meat, poultry, fish, seafood, gelatine.
+    Eggs/dairy are OK.
+  - `veganistisch`: also no eggs, dairy, honey. If `veganistisch`, also
+    add `vegetarisch`.
+  - `glutenvrij` / `zuivelvrij`: only when the recipe is actually free of
+    those, not just "low" of them. Don't infer from naming.
+  - `comfort-food`: hearty, rich, warming — stews, mac & cheese, pot roast,
+    lasagna, mashed potatoes. Soup is typically yes; salad is typically no.
+  - `gezond`: explicitly health-focused (low cal, high protein, salade,
+    light grain bowl). Most everyday recipes do NOT need this tag.
+  - `gourmet`: restaurant-style, multi-component plating, advanced
+    techniques (sous-vide, reductions, foams, complex pastry).
+  - `kinderen`: explicitly kid-friendly, mild, simple flavours.
+  - `bbq`: cooked on a grill / outdoor barbecue.
+  - `oven`: primary cooking method is the oven (roasting, baking).
+    Don't tag for a recipe that just briefly finishes in the oven.
+  - `stoofpot`: braise, stew, slow simmer in liquid for 1+ hour.
+
+When in doubt, omit the tag. False positives are worse than missing tags.
 TXT;
     }
 
@@ -168,6 +233,15 @@ TXT;
             'servings' => $schema->integer()->nullable()->required(),
             'cook_time_minutes' => $schema->integer()->nullable()->required(),
             'image_url' => $schema->string()->nullable()->required(),
+            'meal_types' => $schema->array()
+                ->items($schema->string()->enum(TagSeeder::slugsFor(Tag::GROUP_MEAL_TYPE)))
+                ->required(),
+            'cuisines' => $schema->array()
+                ->items($schema->string()->enum(TagSeeder::slugsFor(Tag::GROUP_CUISINE)))
+                ->required(),
+            'attributes' => $schema->array()
+                ->items($schema->string()->enum(TagSeeder::slugsFor(Tag::GROUP_ATTRIBUTE)))
+                ->required(),
             'ingredients' => $schema->array()
                 ->items(
                     $schema->object(fn ($schema) => [

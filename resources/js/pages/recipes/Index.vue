@@ -10,13 +10,16 @@ import {
     PencilLine,
     Plus,
     Search,
+    SlidersHorizontal,
     Star,
+    Tag as TagIcon,
     X,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import ImportUrlDialog from '@/components/ImportUrlDialog.vue';
 import PasteRecipeDialog from '@/components/PasteRecipeDialog.vue';
+import TagChipSelect from '@/components/TagChipSelect.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,11 +28,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { dashboard } from '@/routes';
 import { create as createRecipe, index as recipesIndex, show as showRecipe } from '@/routes/recipes';
-import type { Paginated, RecipeListFilters, RecipeSummary } from '@/types/recipes';
+import type { Paginated, RecipeListFilters, RecipeSummary, Tag, TagColor } from '@/types/recipes';
 
 const props = defineProps<{
     recipes: Paginated<RecipeSummary>;
     filters: RecipeListFilters;
+    tags: Tag[];
 }>();
 
 defineOptions({
@@ -47,6 +51,8 @@ const search = ref<string>(props.filters.q ?? '');
 const starredOnly = ref<boolean>(!!props.filters.starred);
 const cookedOnly = ref<boolean>(!!props.filters.cooked);
 const timeBucket = ref<RecipeListFilters['time']>(props.filters.time ?? null);
+const selectedTagIds = ref<number[]>([...(props.filters.tag_ids ?? [])]);
+const tagsOpen = ref<boolean>(selectedTagIds.value.length > 0);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -57,6 +63,7 @@ function applyFilters(replace = false): void {
     if (starredOnly.value) query.starred = '1';
     if (cookedOnly.value) query.cooked = '1';
     if (timeBucket.value) query.time = timeBucket.value;
+    if (selectedTagIds.value.length > 0) query.tags = selectedTagIds.value.join(',');
 
     router.get(recipesIndex().url, query, {
         preserveState: true,
@@ -71,17 +78,41 @@ watch(search, () => {
 });
 
 watch([starredOnly, cookedOnly, timeBucket], () => applyFilters(true));
+watch(selectedTagIds, () => applyFilters(true), { deep: true });
 
 function clearAll(): void {
     search.value = '';
     starredOnly.value = false;
     cookedOnly.value = false;
     timeBucket.value = null;
+    selectedTagIds.value = [];
 }
 
 const hasActiveFilter = computed<boolean>(
-    () => search.value.trim() !== '' || starredOnly.value || cookedOnly.value || timeBucket.value !== null,
+    () =>
+        search.value.trim() !== '' ||
+        starredOnly.value ||
+        cookedOnly.value ||
+        timeBucket.value !== null ||
+        selectedTagIds.value.length > 0,
 );
+
+const selectedTags = computed<Tag[]>(() =>
+    props.tags.filter((t) => selectedTagIds.value.includes(t.id)),
+);
+
+function removeTag(id: number): void {
+    selectedTagIds.value = selectedTagIds.value.filter((tid) => tid !== id);
+}
+
+const tagPillClass: Record<TagColor, string> = {
+    cream: 'bg-cream text-ink border-rule',
+    lime: 'bg-block-lime text-ink border-transparent',
+    pink: 'bg-block-pink text-ink border-transparent',
+    sky: 'bg-block-sky text-ink border-transparent',
+    accent: 'bg-brand text-ink border-transparent',
+    ink: 'bg-ink text-cream border-transparent',
+};
 
 function setTime(value: RecipeListFilters['time']): void {
     timeBucket.value = timeBucket.value === value ? null : value;
@@ -255,6 +286,25 @@ const tileBgClass: Record<Tile, string> = {
                     {{ opt.label }}
                 </button>
                 <button
+                    type="button"
+                    :class="[
+                        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                        tagsOpen || selectedTagIds.length > 0
+                            ? 'border-ink bg-ink text-cream'
+                            : 'border-rule bg-cream-soft text-ink-soft hover:bg-ink/5',
+                    ]"
+                    @click="tagsOpen = !tagsOpen"
+                >
+                    <SlidersHorizontal class="size-3.5" />
+                    Categorieën
+                    <span
+                        v-if="selectedTagIds.length > 0"
+                        class="rounded-full bg-cream/20 px-1.5 text-[10px] tabular-nums"
+                    >
+                        {{ selectedTagIds.length }}
+                    </span>
+                </button>
+                <button
                     v-if="hasActiveFilter"
                     type="button"
                     class="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-ink/5"
@@ -262,6 +312,54 @@ const tileBgClass: Record<Tile, string> = {
                 >
                     <X class="size-3.5" /> wissen
                 </button>
+            </div>
+
+            <div
+                v-if="selectedTags.length > 0 && !tagsOpen"
+                class="flex flex-wrap items-center gap-1.5"
+            >
+                <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
+                    actief:
+                </span>
+                <button
+                    v-for="tag in selectedTags"
+                    :key="tag.id"
+                    type="button"
+                    :class="[
+                        'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition active:scale-[0.97]',
+                        tagPillClass[tag.color] ?? tagPillClass.cream,
+                    ]"
+                    @click="removeTag(tag.id)"
+                >
+                    {{ tag.name }}
+                    <X class="size-3" />
+                </button>
+            </div>
+
+            <div
+                v-if="tagsOpen"
+                class="rounded-2xl border border-rule bg-cream-soft p-4"
+            >
+                <div class="mb-3 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-sm text-ink-soft">
+                        <TagIcon class="size-4" />
+                        <span>Filter op categorieën</span>
+                    </div>
+                    <button
+                        v-if="selectedTagIds.length > 0"
+                        type="button"
+                        class="text-xs text-ink-soft transition hover:text-ink"
+                        @click="selectedTagIds = []"
+                    >
+                        wis selectie
+                    </button>
+                </div>
+                <TagChipSelect
+                    v-model="selectedTagIds"
+                    :tags="props.tags"
+                    mode="filter"
+                    :allow-create="false"
+                />
             </div>
         </div>
 
@@ -355,6 +453,24 @@ const tileBgClass: Record<Tile, string> = {
                                     ]"
                                 >
                                     <Plus class="size-4 rotate-45" />
+                                </span>
+                            </div>
+                            <div
+                                v-if="recipe.tags && recipe.tags.length > 0"
+                                class="flex flex-wrap gap-1"
+                            >
+                                <span
+                                    v-for="tag in recipe.tags.slice(0, 3)"
+                                    :key="tag.id"
+                                    class="rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                                >
+                                    {{ tag.name }}
+                                </span>
+                                <span
+                                    v-if="recipe.tags.length > 3"
+                                    class="rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                                >
+                                    +{{ recipe.tags.length - 3 }}
                                 </span>
                             </div>
                             <p

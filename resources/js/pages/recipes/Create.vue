@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ImagePlus, Plus, Timer, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import TagChipSelect from '@/components/TagChipSelect.vue';
 import {
     compileIngredients,
     compileSteps,
@@ -11,6 +12,11 @@ import {
 } from '@/lib/recipeForm';
 import { dashboard } from '@/routes';
 import { index as recipesIndex, store as storeRecipe } from '@/routes/recipes';
+import type { Tag } from '@/types/recipes';
+
+const props = defineProps<{ tags: Tag[] }>();
+
+const availableTags = ref<Tag[]>([...props.tags]);
 
 defineOptions({
     layout: {
@@ -33,9 +39,16 @@ const form = useForm({
     cook_time_minutes: null as number | null,
     notes: '',
     image: null as File | null,
+    tag_ids: [] as number[],
     ingredients: compileIngredients(ingredientRows.value),
     steps: compileSteps(stepRows.value),
 });
+
+function onTagCreated(tag: Tag): void {
+    if (!availableTags.value.some((t) => t.id === tag.id)) {
+        availableTags.value = [...availableTags.value, tag];
+    }
+}
 
 function addIngredientItem(): void {
     ingredientRows.value.push({ kind: 'item', quantity_text: '', unit_text: '', name: '' });
@@ -180,6 +193,19 @@ const pillBtn =
                     <InputError :message="form.errors.image" />
                 </div>
             </div>
+        </section>
+
+        <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
+            <h2 class="mb-1 font-display text-2xl leading-tight">Categorieën</h2>
+            <p class="mb-4 text-sm text-ink-soft">
+                Geef je recept een paar tags zodat je het later makkelijk terugvindt.
+            </p>
+            <TagChipSelect
+                v-model="form.tag_ids"
+                :tags="availableTags"
+                @tag-created="onTagCreated"
+            />
+            <InputError class="mt-3" :message="form.errors.tag_ids" />
         </section>
 
         <section class="rounded-3xl bg-cream-soft p-5 md:p-6">

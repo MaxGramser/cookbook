@@ -42,4 +42,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(CookSession::class);
     }
+
+    public function tags(): HasMany
+    {
+        return $this->hasMany(Tag::class);
+    }
 }

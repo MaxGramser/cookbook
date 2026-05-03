@@ -12,6 +12,7 @@ final class StoreRecipe
 {
     public function __construct(
         private SyncIngredientsAndSteps $sync,
+        private SyncRecipeTags $syncTags,
         private ImageProcessor $imageProcessor,
     ) {}
 
@@ -19,14 +20,15 @@ final class StoreRecipe
      * @param  array{title: string, source_url?: ?string, servings: int, cook_time_minutes?: ?int, notes?: ?string}  $attributes
      * @param  array<int, array<string, mixed>>  $ingredients
      * @param  array<int, array<string, mixed>>  $steps
+     * @param  array<int, int>  $tagIds
      */
-    public function handle(User $user, array $attributes, array $ingredients, array $steps, ?UploadedFile $image = null): Recipe
+    public function handle(User $user, array $attributes, array $ingredients, array $steps, array $tagIds = [], ?UploadedFile $image = null): Recipe
     {
         $imagePath = $image !== null
             ? $this->imageProcessor->processUpload($image)
             : null;
 
-        return DB::transaction(function () use ($user, $attributes, $ingredients, $steps, $imagePath) {
+        return DB::transaction(function () use ($user, $attributes, $ingredients, $steps, $tagIds, $imagePath) {
             $recipe = $user->recipes()->create([
                 'title' => $attributes['title'],
                 'source_url' => $attributes['source_url'] ?? null,
@@ -37,6 +39,7 @@ final class StoreRecipe
             ]);
 
             $this->sync->handle($recipe, $ingredients, $steps);
+            $this->syncTags->handle($recipe, $user, $tagIds);
 
             return $recipe;
         });

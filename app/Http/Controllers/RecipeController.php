@@ -9,6 +9,8 @@ use App\Actions\Recipes\UpdateRecipe;
 use App\Http\Requests\RecipeStoreRequest;
 use App\Http\Requests\RecipeUpdateRequest;
 use App\Models\Recipe;
+use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,40 +20,55 @@ class RecipeController extends Controller
 {
     public function index(Request $request, SearchRecipes $search): Response
     {
+        $tagIds = self::parseTagIds($request->input('tags'));
+
         $filters = [
             'q' => $request->string('q')->toString(),
             'starred' => $request->boolean('starred'),
             'cooked' => $request->boolean('cooked'),
             'time' => $request->string('time')->toString() ?: null,
+            'tag_ids' => $tagIds,
         ];
 
         $user = $request->user();
 
         return Inertia::render('recipes/Index', [
             'recipes' => Inertia::scroll(
-                fn () => $search->handle($user, $filters)->through(fn (Recipe $r) => [
-                    'id' => $r->id,
-                    'title' => $r->title,
-                    'image_path' => $r->image_path,
-                    'cook_time_minutes' => $r->cook_time_minutes,
-                    'servings' => $r->servings,
-                    'is_starred' => $r->starred_at !== null,
-                    'cooked_count' => (int) $r->cooked_count,
-                    'last_cooked_at' => $r->last_cooked_at,
-                ]),
+                fn () => $search->handle($user, $filters)
+                    ->through(fn (Recipe $r) => [
+                        'id' => $r->id,
+                        'title' => $r->title,
+                        'image_path' => $r->image_path,
+                        'cook_time_minutes' => $r->cook_time_minutes,
+                        'servings' => $r->servings,
+                        'is_starred' => $r->starred_at !== null,
+                        'cooked_count' => (int) $r->cooked_count,
+                        'last_cooked_at' => $r->last_cooked_at,
+                        'tags' => $r->tags->map(fn (Tag $t) => [
+                            'id' => $t->id,
+                            'group' => $t->group,
+                            'slug' => $t->slug,
+                            'name' => $t->name,
+                            'color' => $t->color,
+                        ])->values(),
+                    ]),
             ),
             'filters' => [
                 'q' => $filters['q'],
                 'starred' => $filters['starred'],
                 'cooked' => $filters['cooked'],
                 'time' => $filters['time'],
+                'tag_ids' => $tagIds,
             ],
+            'tags' => self::availableTags($user),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('recipes/Create');
+        return Inertia::render('recipes/Create', [
+            'tags' => self::availableTags($request->user()),
+        ]);
     }
 
     public function store(RecipeStoreRequest $request, StoreRecipe $action): RedirectResponse
@@ -69,6 +86,7 @@ class RecipeController extends Controller
             ],
             $request->input('ingredients', []),
             $request->input('steps', []),
+            array_map('intval', (array) $request->input('tag_ids', [])),
             $request->file('image'),
         );
 
@@ -79,7 +97,7 @@ class RecipeController extends Controller
     {
         $this->authorizeOwner($request, $recipe);
 
-        $recipe->load(['ingredients', 'steps']);
+        $recipe->load(['ingredients', 'steps', 'tags']);
 
         return Inertia::render('recipes/Show', [
             'recipe' => [
@@ -96,6 +114,13 @@ class RecipeController extends Controller
                 'last_cooked_at' => $recipe->last_cooked_at,
                 'ingredients' => $recipe->ingredients,
                 'steps' => $recipe->steps,
+                'tags' => $recipe->tags->map(fn (Tag $t) => [
+                    'id' => $t->id,
+                    'group' => $t->group,
+                    'slug' => $t->slug,
+                    'name' => $t->name,
+                    'color' => $t->color,
+                ])->values(),
             ],
             'recentSessions' => $recipe->cookSessions()
                 ->where('user_id', $request->user()->id)
@@ -109,10 +134,11 @@ class RecipeController extends Controller
     {
         $this->authorizeOwner($request, $recipe);
 
-        $recipe->load(['ingredients', 'steps']);
+        $recipe->load(['ingredients', 'steps', 'tags']);
 
         return Inertia::render('recipes/Edit', [
             'recipe' => $recipe,
+            'tags' => self::availableTags($request->user()),
         ]);
     }
 
@@ -131,6 +157,7 @@ class RecipeController extends Controller
             ],
             $request->input('ingredients', []),
             $request->input('steps', []),
+            array_map('intval', (array) $request->input('tag_ids', [])),
             $request->file('image'),
         );
 
@@ -156,5 +183,45 @@ class RecipeController extends Controller
     private function authorizeOwner(Request $request, Recipe $recipe): void
     {
         abort_if((int) $recipe->user_id !== (int) $request->user()->id, 403);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function parseTagIds(mixed $raw): array
+    {
+        if (is_string($raw)) {
+            $raw = explode(',', $raw);
+        }
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $raw),
+            fn ($v) => $v > 0,
+        )));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function availableTags(User $user): array
+    {
+        return Tag::query()
+            ->availableTo($user)
+            ->orderBy('group')
+            ->orderBy('sort')
+            ->orderBy('name')
+            ->get(['id', 'group', 'slug', 'name', 'color', 'is_system'])
+            ->map(fn (Tag $t) => [
+                'id' => $t->id,
+                'group' => $t->group,
+                'slug' => $t->slug,
+                'name' => $t->name,
+                'color' => $t->color,
+                'is_system' => $t->is_system,
+            ])
+            ->all();
     }
 }
