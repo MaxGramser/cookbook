@@ -234,7 +234,7 @@ const tileBgClass: Record<Tile, string> = {
                     <X class="size-3" />
                 </button>
                 <span class="rounded-full bg-ink/5 px-2 py-0.5 text-xs tabular-nums text-ink-soft">
-                    {{ recipes.length }}
+                    {{ recipes.data.length }}
                 </span>
             </label>
 
