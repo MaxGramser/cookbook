@@ -18,6 +18,7 @@ class RecipeStepFactory extends Factory
             'section' => null,
             'position' => 1,
             'body' => fake()->sentence(),
+            'timer_minutes' => null,
         ];
     }
 }

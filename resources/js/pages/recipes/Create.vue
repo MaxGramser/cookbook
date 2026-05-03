@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ImagePlus, Plus, X } from 'lucide-vue-next';
+import { ImagePlus, Plus, Timer, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import {
@@ -24,7 +24,7 @@ defineOptions({
 const ingredientRows = ref<IngredientRow[]>([
     { kind: 'item', quantity_text: '', unit_text: '', name: '' },
 ]);
-const stepRows = ref<StepRow[]>([{ kind: 'item', body: '' }]);
+const stepRows = ref<StepRow[]>([{ kind: 'item', body: '', timer_minutes: '' }]);
 
 const form = useForm({
     title: '',
@@ -54,12 +54,12 @@ function removeIngredientRow(index: number): void {
 }
 
 function addStepItem(): void {
-    stepRows.value.push({ kind: 'item', body: '' });
+    stepRows.value.push({ kind: 'item', body: '', timer_minutes: '' });
 }
 
 function addStepHeader(): void {
     stepRows.value.push({ kind: 'header', name: '' });
-    stepRows.value.push({ kind: 'item', body: '' });
+    stepRows.value.push({ kind: 'item', body: '', timer_minutes: '' });
 }
 
 function removeStepRow(index: number): void {
@@ -272,11 +272,27 @@ const pillBtn =
                         >
                             {{ stepNumber(idx) }}
                         </span>
-                        <textarea
-                            v-model="row.body"
-                            placeholder="Beschrijf de stap..."
-                            class="min-h-[88px] flex-1 rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
-                        />
+                        <div class="flex flex-1 flex-col gap-2">
+                            <textarea
+                                v-model="row.body"
+                                placeholder="Beschrijf de stap..."
+                                class="min-h-[88px] w-full rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/30"
+                            />
+                            <label
+                                class="inline-flex w-fit items-center gap-1.5 rounded-full border border-rule bg-cream px-3 py-1 text-xs text-ink-soft focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30"
+                            >
+                                <Timer class="size-3.5" />
+                                <input
+                                    v-model="row.timer_minutes"
+                                    type="number"
+                                    min="1"
+                                    max="240"
+                                    placeholder="Timer"
+                                    class="w-12 bg-transparent text-center tabular-nums outline-none placeholder:text-ink-faint"
+                                />
+                                <span class="text-ink-faint">min</span>
+                            </label>
+                        </div>
                         <button
                             type="button"
                             class="mt-1 grid size-9 place-items-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-warn"

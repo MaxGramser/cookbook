@@ -39,6 +39,7 @@ class RecipeUpdateRequest extends FormRequest
             'steps' => ['required', 'array', 'min:1'],
             'steps.*.section' => ['nullable', 'string', 'max:120'],
             'steps.*.body' => ['required', 'string'],
+            'steps.*.timer_minutes' => ['nullable', 'integer', 'min:1', 'max:240'],
         ];
     }
 

@@ -219,6 +219,11 @@ function timerLabel(stepId: number): string | null {
 function timerFinished(stepId: number): boolean {
     return timers.value.get(stepId)?.finished ?? false;
 }
+
+/** Prefer the explicit timer the user set in the editor; otherwise sniff the body. */
+function stepTimerMinutes(step: { timer_minutes: number | null; body: string }): number | null {
+    return step.timer_minutes ?? detectTimerMinutes(step.body);
+}
 </script>
 
 <template>
@@ -479,7 +484,7 @@ function timerFinished(stepId: number): boolean {
                                             {{ step.body }}
                                         </p>
                                         <div
-                                            v-if="detectTimerMinutes(step.body) !== null"
+                                            v-if="stepTimerMinutes(step) !== null"
                                             class="flex items-center gap-2"
                                         >
                                             <button
@@ -487,11 +492,11 @@ function timerFinished(stepId: number): boolean {
                                                 type="button"
                                                 class="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-cream transition active:scale-95 hover:bg-[#3a2c24]"
                                                 @click="
-                                                    startTimer(step.id, detectTimerMinutes(step.body)!)
+                                                    startTimer(step.id, stepTimerMinutes(step)!)
                                                 "
                                             >
                                                 <Timer class="size-3.5" />
-                                                Start {{ detectTimerMinutes(step.body) }} min
+                                                Start {{ stepTimerMinutes(step) }} min
                                             </button>
                                             <div
                                                 v-else

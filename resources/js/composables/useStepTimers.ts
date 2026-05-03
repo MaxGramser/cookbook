@@ -28,6 +28,11 @@ export function useStepTimers(now: Ref<number>) {
     const frozenRemaining = new Map<number, number>();
 
     function start(stepId: number, minutes: number): void {
+        // Browsers gate the AudioContext behind a user gesture. Start press is
+        // that gesture — unlock the context now and emit a brief confirmation
+        // beep so the user knows audio will fire when the timer ends.
+        armAudio();
+
         const durationMs = minutes * 60_000;
         timers.value = new Map(timers.value).set(stepId, {
             durationMs,
@@ -99,36 +104,98 @@ export function useStepTimers(now: Ref<number>) {
 
 let audioCtx: AudioContext | null = null;
 
-function fireAlarm(): void {
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate([200, 120, 200, 120, 200]);
+function getAudioCtx(): AudioContext | null {
+    if (audioCtx !== null) {
+        return audioCtx;
     }
     try {
-        if (audioCtx === null) {
-            audioCtx =
-                new (window.AudioContext ||
-                    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-        }
-        for (let i = 0; i < 3; i++) {
-            window.setTimeout(() => emitTone(880, 0.18), i * 240);
-        }
+        const Ctor =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioCtx = new Ctor();
     } catch {
-        // AudioContext not allowed without prior gesture; silent fallback.
+        return null;
+    }
+    return audioCtx;
+}
+
+/** Called on Start press (a real user gesture) to unlock the AudioContext and
+ *  play a friendly 4-note ascending major arpeggio (C5-E5-G5-C6) so the user
+ *  unambiguously hears that audio is armed. */
+function armAudio(): void {
+    const ctx = getAudioCtx();
+    if (ctx === null) {
+        return;
+    }
+    if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+    }
+    const melody: Array<{ frequency: number; offsetMs: number }> = [
+        { frequency: 523.25, offsetMs: 0 },    // C5
+        { frequency: 659.25, offsetMs: 130 },  // E5
+        { frequency: 783.99, offsetMs: 260 },  // G5
+        { frequency: 1046.5, offsetMs: 390 },  // C6
+    ];
+    for (const { frequency, offsetMs } of melody) {
+        window.setTimeout(
+            () => emitTone({ frequency, durationSec: 0.18, gain: 0.22, type: 'triangle' }),
+            offsetMs,
+        );
     }
 }
 
-function emitTone(frequency: number, durationSec: number): void {
-    if (audioCtx === null) {
+/** Loud, attention-grabbing alarm for when a timer finishes. Alternating
+ *  two-tone square-wave pattern (think kitchen timer / smoke alarm). */
+function fireAlarm(): void {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([300, 120, 300, 120, 300, 120, 600]);
+    }
+    const ctx = getAudioCtx();
+    if (ctx === null) {
         return;
     }
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = frequency;
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationSec);
-    osc.start();
-    osc.stop(audioCtx.currentTime + durationSec);
+    if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+    }
+    // 4 alternating bursts: high-low-high-low. Square wave with sharp envelope.
+    const pattern: Array<{ frequency: number; offsetMs: number }> = [
+        { frequency: 1320, offsetMs: 0 },
+        { frequency: 880, offsetMs: 280 },
+        { frequency: 1320, offsetMs: 560 },
+        { frequency: 880, offsetMs: 840 },
+        { frequency: 1320, offsetMs: 1120 },
+        { frequency: 880, offsetMs: 1400 },
+    ];
+    for (const { frequency, offsetMs } of pattern) {
+        window.setTimeout(
+            () => emitTone({ frequency, durationSec: 0.22, gain: 0.6, type: 'square' }),
+            offsetMs,
+        );
+    }
+}
+
+type ToneOpts = { frequency: number; durationSec: number; gain: number; type: OscillatorType };
+
+function emitTone({ frequency, durationSec, gain, type }: ToneOpts): void {
+    const ctx = audioCtx;
+    if (ctx === null) {
+        return;
+    }
+    try {
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = frequency;
+        osc.connect(env);
+        env.connect(ctx.destination);
+        const start = ctx.currentTime;
+        // Quick attack then exponential decay → sharp, bell-like punch.
+        env.gain.setValueAtTime(0.0001, start);
+        env.gain.exponentialRampToValueAtTime(gain, start + 0.005);
+        env.gain.exponentialRampToValueAtTime(0.0001, start + durationSec);
+        osc.start(start);
+        osc.stop(start + durationSec + 0.02);
+    } catch {
+        // Audio failed mid-flight; silent fallback rather than crashing the timer loop.
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Actions\Recipes;
 
 use App\Models\Recipe;
 use App\Models\User;
+use App\Support\Recipes\TimerParser;
 use App\Support\Units\IngredientNormalizer;
 use App\Support\Units\UnitConverter;
 use Illuminate\Support\Facades\DB;
@@ -72,10 +73,14 @@ final class PersistExtractedRecipe
                     continue;
                 }
                 $position++;
+                $explicitTimer = is_array($row) && isset($row['timer_minutes']) && $row['timer_minutes'] !== ''
+                    ? max(1, (int) $row['timer_minutes'])
+                    : null;
                 $recipe->steps()->create([
                     'section' => is_array($row) ? self::cleanSection($row['section'] ?? null) : null,
                     'position' => $position,
                     'body' => $body,
+                    'timer_minutes' => $explicitTimer ?? TimerParser::extractMinutes($body),
                 ]);
             }
 

@@ -39,6 +39,28 @@ test('user can store a recipe with metric ingredients', function () {
     expect($recipe->steps)->toHaveCount(2);
 });
 
+test('explicit step timer is persisted, otherwise inferred from body', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    $this->actingAs($user)->post('/recipes', [
+        'title' => 'Stoofpot',
+        'servings' => 4,
+        'ingredients' => [['quantity_text' => '1', 'unit_text' => 'kg', 'name' => 'rundvlees']],
+        'steps' => [
+            ['body' => 'Aanbraden.', 'timer_minutes' => 7],          // explicit wins
+            ['body' => 'Sudderen op laag vuur, 2 uur.'],              // inferred from body
+            ['body' => 'Wacht een kwartier voor je serveert.'],       // fixed phrase
+            ['body' => 'Serveer warm.'],                              // no timer at all
+        ],
+    ])->assertRedirect();
+
+    $recipe = Recipe::firstWhere('title', 'Stoofpot');
+    expect($recipe->steps[0]->timer_minutes)->toBe(7)
+        ->and($recipe->steps[1]->timer_minutes)->toBe(120)
+        ->and($recipe->steps[2]->timer_minutes)->toBe(15)
+        ->and($recipe->steps[3]->timer_minutes)->toBeNull();
+});
+
 test('US units are converted to metric on store', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
 

@@ -17,6 +17,7 @@ export type RecipeStep = {
     section: string | null;
     position: number;
     body: string;
+    timer_minutes: number | null;
 };
 
 export type RecipeSummary = {

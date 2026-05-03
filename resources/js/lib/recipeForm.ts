@@ -15,7 +15,7 @@ export type IngredientItemRow = {
 export type IngredientRow = IngredientHeaderRow | IngredientItemRow;
 
 export type StepHeaderRow = { kind: 'header'; name: string };
-export type StepItemRow = { kind: 'item'; body: string };
+export type StepItemRow = { kind: 'item'; body: string; timer_minutes: string };
 export type StepRow = StepHeaderRow | StepItemRow;
 
 export type BackendIngredient = {
@@ -24,7 +24,7 @@ export type BackendIngredient = {
     unit_text: string;
     name: string;
 };
-export type BackendStep = { section: string; body: string };
+export type BackendStep = { section: string; body: string; timer_minutes: number | null };
 
 export function compileIngredients(rows: IngredientRow[]): BackendIngredient[] {
     let section = '';
@@ -58,7 +58,9 @@ export function compileSteps(rows: StepRow[]): BackendStep[] {
         if (row.body.trim() === '') {
             continue;
         }
-        out.push({ section, body: row.body });
+        const minutes = Number.parseInt(row.timer_minutes.trim(), 10);
+        const timer = Number.isFinite(minutes) && minutes >= 1 ? minutes : null;
+        out.push({ section, body: row.body, timer_minutes: timer });
     }
     return out;
 }
@@ -93,7 +95,7 @@ export function expandIngredientsToRows(
 }
 
 export function expandStepsToRows(
-    items: { section: string | null; body: string }[],
+    items: { section: string | null; body: string; timer_minutes: number | null }[],
 ): StepRow[] {
     const rows: StepRow[] = [];
     let lastSection: string | null = null;
@@ -105,10 +107,14 @@ export function expandStepsToRows(
             }
             lastSection = section;
         }
-        rows.push({ kind: 'item', body: item.body });
+        rows.push({
+            kind: 'item',
+            body: item.body,
+            timer_minutes: item.timer_minutes !== null ? String(item.timer_minutes) : '',
+        });
     }
     if (rows.length === 0) {
-        rows.push({ kind: 'item', body: '' });
+        rows.push({ kind: 'item', body: '', timer_minutes: '' });
     }
     return rows;
 }

@@ -18,21 +18,27 @@
         'Instrument Serif', ui-serif, Georgia, Cambria, 'Times New Roman',
         Times, serif;
 
-    --color-cream: #e8e2d5;
-    --color-cream-soft: #f2ede2;
-    --color-ink: #1a1614;
-    --color-ink-soft: #5a4a40;
-    --color-ink-faint: #9b8e80;
-    --color-brand: #e0673e;
-    --color-brand-soft: #f4d9c9;
-    --color-warn: #bf1b1b;
-    --color-olive: #736b1e;
-    --color-rule: rgba(26, 22, 20, 0.12);
+    /*
+      Brand tokens reference raw CSS vars (not literal hex) so .dark can
+      override them. @theme inline inlines the value text into utilities, so
+      `.bg-cream` becomes `background-color: var(--cream)`. The raw vars are
+      defined in :root and overridden in .dark below.
+    */
+    --color-cream: var(--cream);
+    --color-cream-soft: var(--cream-soft);
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-ink-faint: var(--ink-faint);
+    --color-brand: var(--brand);
+    --color-brand-soft: var(--brand-soft);
+    --color-warn: var(--warn);
+    --color-olive: var(--olive);
+    --color-rule: var(--rule);
 
-    --color-block-lime: #c5e04a;
-    --color-block-pink: #f7c2d8;
-    --color-block-sky: #a6d8f1;
-    --color-block-cream: #f2ede2;
+    --color-block-lime: var(--block-lime);
+    --color-block-pink: var(--block-pink);
+    --color-block-sky: var(--block-sky);
+    --color-block-cream: var(--block-cream);
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -111,6 +117,23 @@
 }
 
 :root {
+    /* Raw brand vars — overridden in .dark to flip cream/ink palette */
+    --cream: #e8e2d5;
+    --cream-soft: #f2ede2;
+    --ink: #1a1614;
+    --ink-soft: #5a4a40;
+    --ink-faint: #9b8e80;
+    --brand: #e0673e;
+    --brand-soft: #f4d9c9;
+    --warn: #bf1b1b;
+    --olive: #736b1e;
+    --rule: rgba(26, 22, 20, 0.12);
+
+    --block-lime: #c5e04a;
+    --block-pink: #f7c2d8;
+    --block-sky: #a6d8f1;
+    --block-cream: #f2ede2;
+
     --background: #e8e2d5;
     --foreground: #1a1614;
     --card: #f2ede2;
@@ -149,12 +172,12 @@
 
 .dark {
     /* Brand tokens — swap cream/ink so the warm palette inverts cleanly */
-    --color-cream: #1a1614;
-    --color-cream-soft: #25201c;
-    --color-ink: #e8e2d5;
-    --color-ink-soft: #b5a99b;
-    --color-ink-faint: #7a6e62;
-    --color-rule: rgba(232, 226, 213, 0.12);
+    --cream: #1a1614;
+    --cream-soft: #25201c;
+    --ink: #e8e2d5;
+    --ink-soft: #b5a99b;
+    --ink-faint: #7a6e62;
+    --rule: rgba(232, 226, 213, 0.12);
 
     /* Shadcn semantic tokens — match warm dark palette, no slate */
     --background: #1a1614;
@@ -202,20 +225,32 @@
 
     /*
       Block + accent backgrounds use fixed bright colors that don't swap in
-      dark mode. Re-bind --color-ink* locally so text-ink / text-ink-soft /
-      text-ink-faint / text-ink/X stay dark on the bright surface in both
-      modes (per AESTHETIC.md: "always pair a block color with --ink text").
+      dark mode. Re-bind --ink* locally and force color: var(--ink) so:
+      - text-ink / text-ink-soft / text-ink-faint stay dark
+      - bare elements (like <h1> without a text class) inherit dark too,
+        instead of inheriting cream from the dark-mode body
+      Includes hover-state variants so e.g. hover:bg-block-cream also pins.
+      Per AESTHETIC.md: "always pair a block color with --ink text".
     */
     .bg-block-lime,
     .bg-block-pink,
     .bg-block-sky,
     .bg-block-cream,
     .bg-brand,
-    .bg-brand-soft {
-        --color-ink: #1a1614;
-        --color-ink-soft: #5a4a40;
-        --color-ink-faint: #9b8e80;
-        --color-rule: rgba(26, 22, 20, 0.12);
+    .bg-brand-soft,
+    .hover\:bg-block-lime:hover,
+    .hover\:bg-block-pink:hover,
+    .hover\:bg-block-sky:hover,
+    .hover\:bg-block-cream:hover,
+    .hover\:bg-brand:hover,
+    .hover\:bg-brand-soft:hover {
+        --ink: #1a1614;
+        --ink-soft: #5a4a40;
+        --ink-faint: #9b8e80;
+        --cream: #e8e2d5;
+        --cream-soft: #f2ede2;
+        --rule: rgba(26, 22, 20, 0.12);
+        color: var(--ink);
     }
 }
 
