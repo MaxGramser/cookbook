@@ -168,12 +168,14 @@ function onDragEnd(event: DragEvent): void {
             </button>
         </div>
         <div :class="['flex flex-1 flex-col gap-2 p-5', tileBgClass[tile]]">
-            <h3 class="font-display line-clamp-2 text-lg leading-tight">
+            <h3
+                class="font-display line-clamp-2 min-h-[2lh] text-lg leading-tight"
+            >
                 {{ recipe.title }}
             </h3>
             <div
                 v-if="recipe.tags && recipe.tags.length > 0"
-                class="flex flex-wrap gap-1"
+                class="flex max-h-6 flex-wrap gap-1 overflow-hidden"
             >
                 <span
                     v-for="tag in recipe.tags.slice(0, 3)"

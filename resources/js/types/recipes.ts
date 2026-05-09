@@ -143,10 +143,17 @@ export type ShortlistRecipe = RecipeSummary & {
     };
 };
 
+export type ShortlistShareInfo = {
+    token: string;
+    url: string;
+    expires_at: string | null;
+};
+
 export type ShortlistDetail = {
     id: number;
     name: string;
     color: string | null;
+    active_share: ShortlistShareInfo | null;
     recipes: ShortlistRecipe[];
 };
 

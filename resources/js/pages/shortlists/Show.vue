@@ -5,6 +5,7 @@ import {
     GripVertical,
     NotebookPen,
     Pencil,
+    Share2,
     ShoppingBasket,
     SquarePen,
     Trash2,
@@ -14,6 +15,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import GrocerySessionController from '@/actions/App/Http/Controllers/GrocerySessionController';
 import ShortlistController from '@/actions/App/Http/Controllers/ShortlistController';
 import RecipeCard from '@/components/RecipeCard.vue';
+import ShareShortlistDialog from '@/components/ShareShortlistDialog.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -51,6 +53,8 @@ watch(
 
 const draggedIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
+
+const shareOpen = ref<boolean>(false);
 
 const expandedNotes = ref<Set<number>>(new Set());
 
@@ -331,6 +335,19 @@ function confirmDelete(event: Event): void {
                                 ? 'border-cream/25 hover:bg-cream/10'
                                 : 'border-ink/15 hover:bg-ink/5',
                         ]"
+                        @click="shareOpen = true"
+                    >
+                        <Share2 class="size-4" />
+                        {{ shortlist.active_share ? 'Deel-link' : 'Delen' }}
+                    </button>
+                    <button
+                        type="button"
+                        :class="[
+                            'inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition',
+                            isDarkHero
+                                ? 'border-cream/25 hover:bg-cream/10'
+                                : 'border-ink/15 hover:bg-ink/5',
+                        ]"
                         @click="openRename"
                     >
                         <Pencil class="size-4" /> Hernoem
@@ -540,4 +557,10 @@ function confirmDelete(event: Event): void {
             </form>
         </DialogContent>
     </Dialog>
+
+    <ShareShortlistDialog
+        v-model:open="shareOpen"
+        :shortlist-id="shortlist.id"
+        :active-share="shortlist.active_share"
+    />
 </template>

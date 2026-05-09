@@ -4,6 +4,7 @@ use App\Models\GrocerySession;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\Shortlist;
+use App\Models\ShortlistShare;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -237,6 +238,154 @@ test('completing a shortlist grocery session redirects to the shortlist', functi
     $this->actingAs($user)
         ->post("/grocery/{$session->id}/complete")
         ->assertRedirect("/shortlists/{$shortlist->id}");
+});
+
+test('generating a share link creates a fresh token and revokes old shares', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+
+    $stale = ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'old-token',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($user)
+        ->post("/shortlists/{$shortlist->id}/share")
+        ->assertRedirect();
+
+    expect(ShortlistShare::query()->where('id', $stale->id)->exists())->toBeFalse();
+    $fresh = ShortlistShare::query()->where('shortlist_id', $shortlist->id)->first();
+    expect($fresh)->not->toBeNull();
+    expect($fresh->token)->not->toBe('old-token');
+    expect($fresh->expires_at->isFuture())->toBeTrue();
+});
+
+test('explicit unshare removes all shares', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'tk',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($user)
+        ->delete("/shortlists/{$shortlist->id}/share")
+        ->assertRedirect();
+
+    expect($shortlist->shares()->count())->toBe(0);
+});
+
+test('share link is rendered on the shortlist show page', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'visible-token',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($user)
+        ->get("/shortlists/{$shortlist->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('shortlist.active_share.token', 'visible-token')
+        );
+});
+
+test('a guest can view a shared shortlist via its token', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create(['name' => 'Pizza-avond']);
+    $recipe = Recipe::factory()->for($user)->create(['title' => 'Margherita']);
+    $shortlist->recipes()->attach($recipe->id, [
+        'position' => 0,
+        'note' => 'voorgerecht',
+    ]);
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'public-token',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->get('/share/public-token')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('share/Shortlist')
+            ->where('shortlist.name', 'Pizza-avond')
+            ->where('shortlist.recipes.0.title', 'Margherita')
+            ->where('shortlist.recipes.0.pivot.note', 'voorgerecht')
+        );
+});
+
+test('a guest can view a shared recipe via its token', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    $recipe = Recipe::factory()->for($user)->create(['title' => 'Pasta puttanesca']);
+    RecipeIngredient::factory()->for($recipe)->create();
+    $shortlist->recipes()->attach($recipe->id, ['position' => 0]);
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'recipe-token',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->get("/share/recipe-token/recipes/{$recipe->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('share/Recipe')
+            ->where('recipe.title', 'Pasta puttanesca')
+            ->has('recipe.ingredients', 1)
+        );
+});
+
+test('a guest cannot access a recipe that is not in the shared shortlist', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    $shortlistRecipe = Recipe::factory()->for($user)->create();
+    $unrelated = Recipe::factory()->for($user)->create();
+    $shortlist->recipes()->attach($shortlistRecipe->id, ['position' => 0]);
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'scoped-token',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->get("/share/scoped-token/recipes/{$unrelated->id}")
+        ->assertNotFound();
+});
+
+test('an expired share renders the expired page with a 410 status', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'old',
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    $this->get('/share/old')
+        ->assertStatus(410)
+        ->assertInertia(fn ($page) => $page->component('share/Expired'));
+});
+
+test('a non-existent token renders the expired page', function () {
+    $this->get('/share/does-not-exist')
+        ->assertStatus(410)
+        ->assertInertia(fn ($page) => $page->component('share/Expired'));
+});
+
+test('public share routes do not require authentication', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'guest-ok',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    // No actingAs() call.
+    $this->get('/share/guest-ok')->assertOk();
 });
 
 test('deleting a shortlist cascades the pivot but keeps recipes intact', function () {

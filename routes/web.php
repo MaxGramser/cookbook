@@ -4,6 +4,7 @@ use App\Http\Controllers\CookSessionController;
 use App\Http\Controllers\DeveloperLoginController;
 use App\Http\Controllers\GrocerySessionController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\PublicShortlistController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
 use App\Http\Controllers\ShortlistController;
@@ -16,6 +17,9 @@ Route::inertia('/', 'Welcome', [
 ])->name('home');
 
 Route::post('dev/login', DeveloperLoginController::class)->name('dev.login');
+
+Route::get('share/{token}', [PublicShortlistController::class, 'show'])->name('share.shortlist.show');
+Route::get('share/{token}/recipes/{recipe}', [PublicShortlistController::class, 'showRecipe'])->name('share.shortlist.recipe');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [RecipeController::class, 'index'])->name('dashboard');
@@ -52,6 +56,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('shortlists/{shortlist}/recipes/{recipe}', [ShortlistController::class, 'updateRecipe'])->name('shortlists.recipe.update');
 
     Route::post('shortlists/{shortlist}/grocery', [GrocerySessionController::class, 'storeForShortlist'])->name('grocery.shortlist.start');
+
+    Route::post('shortlists/{shortlist}/share', [ShortlistController::class, 'share'])->name('shortlists.share');
+    Route::delete('shortlists/{shortlist}/share', [ShortlistController::class, 'unshare'])->name('shortlists.unshare');
 
     Route::get('history', [HistoryController::class, 'index'])->name('history.index');
 

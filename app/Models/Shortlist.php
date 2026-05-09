@@ -33,4 +33,9 @@ class Shortlist extends Model
     {
         return $this->hasMany(GrocerySession::class);
     }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(ShortlistShare::class);
+    }
 }

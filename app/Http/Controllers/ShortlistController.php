@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Recipe;
 use App\Models\Shortlist;
+use App\Models\ShortlistShare;
 use App\Models\Tag;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -58,11 +60,18 @@ class ShortlistController extends Controller
             },
         ]);
 
+        $activeShare = $shortlist->shares()->valid()->latest()->first();
+
         return Inertia::render('shortlists/Show', [
             'shortlist' => [
                 'id' => $shortlist->id,
                 'name' => $shortlist->name,
                 'color' => $shortlist->color,
+                'active_share' => $activeShare ? [
+                    'token' => $activeShare->token,
+                    'url' => route('share.shortlist.show', $activeShare->token),
+                    'expires_at' => $activeShare->expires_at?->toIso8601String(),
+                ] : null,
                 'recipes' => $shortlist->recipes->map(fn (Recipe $r) => [
                     'id' => $r->id,
                     'title' => $r->title,
@@ -182,6 +191,30 @@ class ShortlistController extends Controller
         $shortlist->recipes()->updateExistingPivot($recipe->id, [
             'note' => $data['note'] ?? null,
         ]);
+
+        return back();
+    }
+
+    public function share(Request $request, Shortlist $shortlist): RedirectResponse
+    {
+        $this->authorizeOwner($request, $shortlist);
+
+        $shortlist->shares()->delete();
+
+        ShortlistShare::create([
+            'shortlist_id' => $shortlist->id,
+            'token' => Str::random(40),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        return back();
+    }
+
+    public function unshare(Request $request, Shortlist $shortlist): RedirectResponse
+    {
+        $this->authorizeOwner($request, $shortlist);
+
+        $shortlist->shares()->delete();
 
         return back();
     }
