@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { ChefHat, Clock, Plus, Star, X } from 'lucide-vue-next';
+import { ChefHat, Clock, Star, X } from 'lucide-vue-next';
 import { computed } from 'vue';
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import { show as showRecipe } from '@/routes/recipes';
@@ -168,23 +168,9 @@ function onDragEnd(event: DragEvent): void {
             </button>
         </div>
         <div :class="['flex flex-1 flex-col gap-2 p-5', tileBgClass[tile]]">
-            <div class="flex items-end gap-3">
-                <h3
-                    class="font-display line-clamp-2 flex-1 text-lg leading-tight"
-                >
-                    {{ recipe.title }}
-                </h3>
-                <span
-                    :class="[
-                        'grid size-8 shrink-0 place-items-center rounded-full transition group-hover:rotate-12',
-                        tile === 'ink'
-                            ? 'bg-cream text-ink'
-                            : 'bg-ink text-cream',
-                    ]"
-                >
-                    <Plus class="size-4 rotate-45" />
-                </span>
-            </div>
+            <h3 class="font-display line-clamp-2 text-lg leading-tight">
+                {{ recipe.title }}
+            </h3>
             <div
                 v-if="recipe.tags && recipe.tags.length > 0"
                 class="flex flex-wrap gap-1"
