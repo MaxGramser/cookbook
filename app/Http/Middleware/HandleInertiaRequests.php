@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\CookSession;
 use App\Models\GrocerySession;
+use App\Models\Shortlist;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,7 +47,32 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'activeCookSession' => fn () => $this->activeCookSession($request),
             'activeGrocerySession' => fn () => $this->activeGrocerySession($request),
+            'shortlists' => fn () => $this->shortlists($request),
         ];
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, color: string|null, recipe_count: int}>
+     */
+    private function shortlists(Request $request): array
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return [];
+        }
+
+        return Shortlist::query()
+            ->where('user_id', $user->id)
+            ->withCount('recipes')
+            ->orderBy('created_at')
+            ->get(['id', 'name', 'color'])
+            ->map(fn (Shortlist $s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'color' => $s->color,
+                'recipe_count' => (int) $s->recipes_count,
+            ])
+            ->all();
     }
 
     /**
@@ -91,17 +117,25 @@ class HandleInertiaRequests extends Middleware
         $session = GrocerySession::query()
             ->where('user_id', $user->id)
             ->whereNull('completed_at')
-            ->with('recipe:id,title')
+            ->with(['recipe:id,title', 'shortlist:id,name'])
             ->latest('started_at')
             ->first();
 
-        if ($session === null || $session->recipe === null) {
+        if ($session === null) {
+            return null;
+        }
+
+        $title = $session->isForShortlist()
+            ? ($session->shortlist?->name ?? '')
+            : ($session->recipe?->title ?? '');
+
+        if ($title === '') {
             return null;
         }
 
         return [
             'id' => $session->id,
-            'recipe_title' => $session->recipe->title,
+            'recipe_title' => $title,
             'phase' => $session->phase,
             'started_at' => $session->started_at?->toIso8601String() ?? '',
         ];

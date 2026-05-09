@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\CookSessionController;
+use App\Http\Controllers\DeveloperLoginController;
 use App\Http\Controllers\GrocerySessionController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
+use App\Http\Controllers\ShortlistController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -12,6 +14,8 @@ use Laravel\Fortify\Features;
 Route::inertia('/', 'Welcome', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
+
+Route::post('dev/login', DeveloperLoginController::class)->name('dev.login');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [RecipeController::class, 'index'])->name('dashboard');
@@ -37,6 +41,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('grocery/{session}/complete', [GrocerySessionController::class, 'complete'])->name('grocery.complete');
     Route::delete('grocery/{session}', [GrocerySessionController::class, 'destroy'])->name('grocery.destroy');
     Route::post('grocery/{session}/ingredients/{ingredient}', [GrocerySessionController::class, 'toggleIngredient'])->name('grocery.ingredient.toggle');
+
+    Route::post('shortlists', [ShortlistController::class, 'store'])->name('shortlists.store');
+    Route::get('shortlists/{shortlist}', [ShortlistController::class, 'show'])->name('shortlists.show');
+    Route::patch('shortlists/{shortlist}', [ShortlistController::class, 'update'])->name('shortlists.update');
+    Route::delete('shortlists/{shortlist}', [ShortlistController::class, 'destroy'])->name('shortlists.destroy');
+    Route::post('shortlists/{shortlist}/recipes', [ShortlistController::class, 'attach'])->name('shortlists.attach');
+    Route::delete('shortlists/{shortlist}/recipes/{recipe}', [ShortlistController::class, 'detach'])->name('shortlists.detach');
+    Route::post('shortlists/{shortlist}/reorder', [ShortlistController::class, 'reorder'])->name('shortlists.reorder');
+    Route::patch('shortlists/{shortlist}/recipes/{recipe}', [ShortlistController::class, 'updateRecipe'])->name('shortlists.recipe.update');
+
+    Route::post('shortlists/{shortlist}/grocery', [GrocerySessionController::class, 'storeForShortlist'])->name('grocery.shortlist.start');
 
     Route::get('history', [HistoryController::class, 'index'])->name('history.index');
 

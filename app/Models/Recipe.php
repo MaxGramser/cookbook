@@ -61,4 +61,11 @@ class Recipe extends Model
     {
         return $this->belongsToMany(Tag::class)->orderBy('group')->orderBy('sort');
     }
+
+    public function shortlists(): BelongsToMany
+    {
+        return $this->belongsToMany(Shortlist::class, 'recipe_shortlist')
+            ->withPivot(['position', 'note'])
+            ->withTimestamps();
+    }
 }

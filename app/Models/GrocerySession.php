@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['recipe_id', 'user_id', 'phase', 'started_at', 'completed_at'])]
+#[Fillable(['recipe_id', 'shortlist_id', 'user_id', 'phase', 'started_at', 'completed_at'])]
 class GrocerySession extends Model
 {
     /** @use HasFactory<GrocerySessionFactory> */
@@ -30,6 +30,16 @@ class GrocerySession extends Model
     public function recipe(): BelongsTo
     {
         return $this->belongsTo(Recipe::class);
+    }
+
+    public function shortlist(): BelongsTo
+    {
+        return $this->belongsTo(Shortlist::class);
+    }
+
+    public function isForShortlist(): bool
+    {
+        return $this->shortlist_id !== null;
     }
 
     public function user(): BelongsTo

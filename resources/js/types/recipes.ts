@@ -110,19 +110,44 @@ export type CookSessionSummary = {
     recipe?: { id: number; title: string; image_path: string | null };
 };
 
+export type GrocerySessionRecipe = {
+    id: number;
+    title: string;
+    image_path: string | null;
+    servings: number;
+    ingredients: RecipeIngredient[];
+};
+
 export type GrocerySessionDetail = {
     id: number;
     phase: 'home' | 'shopping';
     started_at: string;
     completed_at: string | null;
-    recipe: {
-        id: number;
-        title: string;
-        image_path: string | null;
-        servings: number;
-        ingredients: RecipeIngredient[];
-    };
+    subject_type: 'recipe' | 'shortlist';
+    subject: { id: number; title: string };
+    recipes: GrocerySessionRecipe[];
     checks: { id: number; phase: 'home' | 'shopping' }[];
+};
+
+export type ShortlistSidebarItem = {
+    id: number;
+    name: string;
+    color: string | null;
+    recipe_count: number;
+};
+
+export type ShortlistRecipe = RecipeSummary & {
+    pivot: {
+        position: number;
+        note: string | null;
+    };
+};
+
+export type ShortlistDetail = {
+    id: number;
+    name: string;
+    color: string | null;
+    recipes: ShortlistRecipe[];
 };
 
 export type GrocerySessionSummary = {

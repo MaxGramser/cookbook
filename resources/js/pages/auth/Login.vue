@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
+import dev from '@/routes/dev';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -23,7 +24,12 @@ defineProps<{
     status?: string;
     canResetPassword: boolean;
     canRegister: boolean;
+    canDevLogin?: boolean;
 }>();
+
+function devLogin() {
+    router.post(dev.login.url());
+}
 </script>
 
 <template>
@@ -108,4 +114,22 @@ defineProps<{
             <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
         </div>
     </Form>
+
+    <div
+        v-if="canDevLogin"
+        class="mt-6 rounded-md border border-dashed border-muted-foreground/40 p-4 text-center text-sm"
+    >
+        <p class="mb-2 font-medium text-muted-foreground">
+            Dev environment
+        </p>
+        <Button
+            type="button"
+            variant="outline"
+            class="w-full"
+            @click="devLogin"
+            data-test="dev-login-button"
+        >
+            Log in as developer
+        </Button>
+    </div>
 </template>

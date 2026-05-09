@@ -1,25 +1,46 @@
 <script setup lang="ts">
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { ChefHat, Clock, ExternalLink, Pencil, Play, Printer, ShoppingBasket, Star, Trash2, Users } from 'lucide-vue-next';
+import {
+    ChefHat,
+    Clock,
+    ExternalLink,
+    ListPlus,
+    Pencil,
+    Play,
+    Printer,
+    ShoppingBasket,
+    Star,
+    Trash2,
+    Users,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import CookSessionController from '@/actions/App/Http/Controllers/CookSessionController';
 import GrocerySessionController from '@/actions/App/Http/Controllers/GrocerySessionController';
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
+import AddToShortlistDialog from '@/components/AddToShortlistDialog.vue';
 import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
 import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
 import { index as recipesIndex, edit as editRecipe } from '@/routes/recipes';
-import type { CookSessionSummary, Recipe, Tag, TagColor } from '@/types/recipes';
+import type {
+    CookSessionSummary,
+    Recipe,
+    Tag,
+    TagColor,
+} from '@/types/recipes';
 
 const props = defineProps<{
     recipe: Recipe;
     recentSessions: CookSessionSummary[];
 }>();
 
-const ingredientGroups = computed(() => groupBySection(props.recipe.ingredients));
+const ingredientGroups = computed(() =>
+    groupBySection(props.recipe.ingredients),
+);
 const stepGroups = computed(() => groupBySection(props.recipe.steps));
 const printOpen = ref<boolean>(false);
+const shortlistOpen = ref<boolean>(false);
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: recipesIndex() }] },
@@ -44,7 +65,9 @@ function sessionDuration(session: CookSessionSummary): string | null {
         return null;
     }
 
-    return formatDuration(durationBetween(session.started_at, session.completed_at));
+    return formatDuration(
+        durationBetween(session.started_at, session.completed_at),
+    );
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -70,6 +93,7 @@ const tagColorClass: Record<TagColor, string> = {
 function tagFilterUrl(tag: Tag): string {
     const params = new URLSearchParams();
     params.set('tags', String(tag.id));
+
     return `${recipesIndex().url}?${params.toString()}`;
 }
 </script>
@@ -79,7 +103,7 @@ function tagFilterUrl(tag: Tag): string {
 
     <div class="flex flex-col gap-5 p-4 md:p-6">
         <div class="grid gap-5 md:grid-cols-[5fr_4fr]">
-            <div class="overflow-hidden rounded-3xl bg-cream-soft shadow-tile">
+            <div class="shadow-tile overflow-hidden rounded-3xl bg-cream-soft">
                 <div class="aspect-[4/3] w-full overflow-hidden bg-ink/5">
                     <img
                         v-if="recipe.image_path"
@@ -97,12 +121,13 @@ function tagFilterUrl(tag: Tag): string {
                 <div class="flex flex-wrap items-center gap-2 p-5">
                     <span
                         v-if="recipe.cook_time_minutes"
-                        class="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-xs font-semibold tabular-nums text-cream"
+                        class="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-xs font-semibold text-cream tabular-nums"
                     >
-                        <Clock class="size-3.5" /> {{ recipe.cook_time_minutes }} min
+                        <Clock class="size-3.5" />
+                        {{ recipe.cook_time_minutes }} min
                     </span>
                     <span
-                        class="flex items-center gap-1.5 rounded-full bg-block-lime px-3 py-1 text-xs font-semibold tabular-nums text-ink"
+                        class="flex items-center gap-1.5 rounded-full bg-block-lime px-3 py-1 text-xs font-semibold text-ink tabular-nums"
                     >
                         <Users class="size-3.5" /> {{ recipe.servings }} pers
                     </span>
@@ -120,7 +145,7 @@ function tagFilterUrl(tag: Tag): string {
                         :key="tag.id"
                         :href="tagFilterUrl(tag)"
                         :class="[
-                            'rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-[0.97] hover:-translate-y-px',
+                            'rounded-full border px-3 py-1 text-xs font-semibold transition hover:-translate-y-px active:scale-[0.97]',
                             tagColorClass[tag.color] ?? tagColorClass.cream,
                         ]"
                     >
@@ -129,40 +154,61 @@ function tagFilterUrl(tag: Tag): string {
                 </div>
             </div>
 
-            <div class="flex flex-col justify-between gap-5 rounded-3xl bg-ink p-6 text-cream md:p-8">
+            <div
+                class="flex flex-col justify-between gap-5 rounded-3xl bg-ink p-6 text-cream md:p-8"
+            >
                 <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-cream/55">
+                    <p
+                        class="text-[11px] font-semibold tracking-[0.22em] text-cream/55 uppercase"
+                    >
                         Recept
                     </p>
-                    <h1 class="mt-2 font-display text-4xl leading-[1.05] tracking-tight md:text-5xl">
+                    <h1
+                        class="font-display mt-2 text-4xl leading-[1.05] tracking-tight md:text-5xl"
+                    >
                         {{ recipe.title }}
                     </h1>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <Form
-                        v-bind="CookSessionController.store.form({ recipe: recipe.id })"
+                        v-bind="
+                            CookSessionController.store.form({
+                                recipe: recipe.id,
+                            })
+                        "
                         v-slot="{ processing }"
                     >
                         <button
                             type="submit"
                             :disabled="processing"
-                            class="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-ink transition active:scale-[0.98] hover:bg-[#d35a31] disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-[#d35a31] active:scale-[0.98] disabled:opacity-50"
                         >
                             <Play class="size-4" /> Start koken
                         </button>
                     </Form>
                     <Form
-                        v-bind="GrocerySessionController.store.form({ recipe: recipe.id })"
+                        v-bind="
+                            GrocerySessionController.store.form({
+                                recipe: recipe.id,
+                            })
+                        "
                         v-slot="{ processing }"
                     >
                         <button
                             type="submit"
                             :disabled="processing"
-                            class="inline-flex items-center gap-2 rounded-full bg-block-lime px-5 py-2.5 text-sm font-medium text-ink transition active:scale-[0.98] hover:bg-[#b5d23f] disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-full bg-block-lime px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-[#b5d23f] active:scale-[0.98] disabled:opacity-50"
                         >
                             <ShoppingBasket class="size-4" /> Boodschappen
                         </button>
                     </Form>
+                    <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"
+                        @click="shortlistOpen = true"
+                    >
+                        <ListPlus class="size-4" /> Op shortlist
+                    </button>
                     <Link
                         :href="editRecipe(recipe.id)"
                         class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"
@@ -179,8 +225,15 @@ function tagFilterUrl(tag: Tag): string {
                         ]"
                         @click="toggleStar"
                     >
-                        <Star class="size-4" :fill="recipe.is_starred ? 'currentColor' : 'none'" />
-                        {{ recipe.is_starred ? 'Favoriet' : 'Markeer als favoriet' }}
+                        <Star
+                            class="size-4"
+                            :fill="recipe.is_starred ? 'currentColor' : 'none'"
+                        />
+                        {{
+                            recipe.is_starred
+                                ? 'Favoriet'
+                                : 'Markeer als favoriet'
+                        }}
                     </button>
                     <button
                         type="button"
@@ -196,8 +249,12 @@ function tagFilterUrl(tag: Tag): string {
         <div class="grid gap-5 md:grid-cols-[3fr_5fr]">
             <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
                 <div class="mb-4 flex items-baseline justify-between">
-                    <h2 class="font-display text-2xl leading-tight">Ingrediënten</h2>
-                    <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
+                    <h2 class="font-display text-2xl leading-tight">
+                        Ingrediënten
+                    </h2>
+                    <span
+                        class="text-[11px] font-semibold tracking-[0.18em] text-ink-faint uppercase"
+                    >
                         {{ recipe.ingredients.length }} regels
                     </span>
                 </div>
@@ -209,7 +266,7 @@ function tagFilterUrl(tag: Tag): string {
                     >
                         <h3
                             v-if="group.section"
-                            class="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint"
+                            class="px-1 pt-1 text-[11px] font-semibold tracking-[0.2em] text-ink-faint uppercase"
                         >
                             {{ group.section }}
                         </h3>
@@ -219,9 +276,18 @@ function tagFilterUrl(tag: Tag): string {
                                 :key="ingredient.id"
                                 class="flex items-center justify-between gap-3 rounded-xl border border-rule bg-cream px-4 py-2.5 text-sm"
                             >
-                                <span class="flex-1">{{ ingredient.name }}</span>
-                                <span class="shrink-0 font-semibold tabular-nums text-ink-soft">
-                                    {{ formatQuantity(ingredient.quantity, ingredient.unit) || ingredient.raw_text }}
+                                <span class="flex-1">{{
+                                    ingredient.name
+                                }}</span>
+                                <span
+                                    class="shrink-0 font-semibold text-ink-soft tabular-nums"
+                                >
+                                    {{
+                                        formatQuantity(
+                                            ingredient.quantity,
+                                            ingredient.unit,
+                                        ) || ingredient.raw_text
+                                    }}
                                 </span>
                             </li>
                         </ul>
@@ -232,7 +298,9 @@ function tagFilterUrl(tag: Tag): string {
             <section class="rounded-3xl bg-cream-soft p-5 md:p-6">
                 <div class="mb-4 flex items-baseline justify-between">
                     <h2 class="font-display text-2xl leading-tight">Stappen</h2>
-                    <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
+                    <span
+                        class="text-[11px] font-semibold tracking-[0.18em] text-ink-faint uppercase"
+                    >
                         {{ recipe.steps.length }} stappen
                     </span>
                 </div>
@@ -244,7 +312,7 @@ function tagFilterUrl(tag: Tag): string {
                     >
                         <h3
                             v-if="group.section"
-                            class="px-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint"
+                            class="px-1 pt-1 text-[11px] font-semibold tracking-[0.2em] text-ink-faint uppercase"
                         >
                             {{ group.section }}
                         </h3>
@@ -259,7 +327,11 @@ function tagFilterUrl(tag: Tag): string {
                                 >
                                     {{ step.position }}
                                 </span>
-                                <p class="flex-1 whitespace-pre-line leading-relaxed">{{ step.body }}</p>
+                                <p
+                                    class="flex-1 leading-relaxed whitespace-pre-line"
+                                >
+                                    {{ step.body }}
+                                </p>
                             </li>
                         </ol>
                     </div>
@@ -267,15 +339,25 @@ function tagFilterUrl(tag: Tag): string {
             </section>
         </div>
 
-        <section v-if="recipe.notes" class="rounded-3xl bg-block-pink p-5 md:p-6">
+        <section
+            v-if="recipe.notes"
+            class="rounded-3xl bg-block-pink p-5 md:p-6"
+        >
             <h2 class="font-display text-2xl leading-tight">Notities</h2>
-            <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/85">
+            <p
+                class="mt-2 text-sm leading-relaxed whitespace-pre-line text-ink/85"
+            >
                 {{ recipe.notes }}
             </p>
         </section>
 
-        <section v-if="recentSessions.length > 0" class="rounded-3xl bg-cream-soft p-5 md:p-6">
-            <h2 class="mb-3 font-display text-2xl leading-tight">Laatst gekookt</h2>
+        <section
+            v-if="recentSessions.length > 0"
+            class="rounded-3xl bg-cream-soft p-5 md:p-6"
+        >
+            <h2 class="font-display mb-3 text-2xl leading-tight">
+                Laatst gekookt
+            </h2>
             <ul class="flex flex-col gap-2">
                 <li
                     v-for="session in recentSessions"
@@ -283,9 +365,16 @@ function tagFilterUrl(tag: Tag): string {
                     class="flex items-center justify-between gap-3 rounded-xl border border-rule bg-cream px-4 py-3 text-sm"
                 >
                     <span class="flex-1">
-                        {{ formatDate(session.completed_at ?? session.started_at) }}
+                        {{
+                            formatDate(
+                                session.completed_at ?? session.started_at,
+                            )
+                        }}
                     </span>
-                    <span v-if="sessionDuration(session)" class="tabular-nums text-ink-soft">
+                    <span
+                        v-if="sessionDuration(session)"
+                        class="text-ink-soft tabular-nums"
+                    >
                         {{ sessionDuration(session) }}
                     </span>
                     <span
@@ -312,5 +401,9 @@ function tagFilterUrl(tag: Tag): string {
         </Form>
 
         <PrintRecipeDialog v-model:open="printOpen" :recipe="recipe" />
+        <AddToShortlistDialog
+            v-model:open="shortlistOpen"
+            :recipe-id="recipe.id"
+        />
     </div>
 </template>

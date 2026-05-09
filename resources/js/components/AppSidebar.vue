@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { ChefHat, History } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
+import NavShortlists from '@/components/NavShortlists.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
     Sidebar,
@@ -47,6 +48,7 @@ const mainNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavShortlists />
         </SidebarContent>
 
         <SidebarFooter>
