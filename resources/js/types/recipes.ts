@@ -62,6 +62,12 @@ export type Paginated<T> = {
     total?: number;
 };
 
+export type RecipeShareInfo = {
+    token: string;
+    url: string;
+    expires_at: string | null;
+};
+
 export type Recipe = {
     id: number;
     user_id: number;
@@ -77,6 +83,7 @@ export type Recipe = {
     ingredients: RecipeIngredient[];
     steps: RecipeStep[];
     tags?: Tag[];
+    active_share?: RecipeShareInfo | null;
 };
 
 export type CookSessionDetail = {

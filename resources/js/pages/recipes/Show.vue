@@ -8,6 +8,7 @@ import {
     Pencil,
     Play,
     Printer,
+    Share2,
     ShoppingBasket,
     Star,
     Trash2,
@@ -19,6 +20,7 @@ import GrocerySessionController from '@/actions/App/Http/Controllers/GrocerySess
 import RecipeController from '@/actions/App/Http/Controllers/RecipeController';
 import AddToShortlistDialog from '@/components/AddToShortlistDialog.vue';
 import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
+import ShareRecipeDialog from '@/components/ShareRecipeDialog.vue';
 import { durationBetween, formatDuration } from '@/lib/duration';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
@@ -41,6 +43,7 @@ const ingredientGroups = computed(() =>
 const stepGroups = computed(() => groupBySection(props.recipe.steps));
 const printOpen = ref<boolean>(false);
 const shortlistOpen = ref<boolean>(false);
+const shareOpen = ref<boolean>(false);
 
 defineOptions({
     layout: { breadcrumbs: [{ title: 'Recepten', href: recipesIndex() }] },
@@ -238,6 +241,14 @@ function tagFilterUrl(tag: Tag): string {
                     <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"
+                        @click="shareOpen = true"
+                    >
+                        <Share2 class="size-4" />
+                        {{ recipe.active_share ? 'Deel-link' : 'Delen' }}
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-cream/25 px-5 py-2.5 text-sm font-medium transition hover:bg-cream/10"
                         @click="printOpen = true"
                     >
                         <Printer class="size-4" /> Print
@@ -404,6 +415,11 @@ function tagFilterUrl(tag: Tag): string {
         <AddToShortlistDialog
             v-model:open="shortlistOpen"
             :recipe-id="recipe.id"
+        />
+        <ShareRecipeDialog
+            v-model:open="shareOpen"
+            :recipe-id="recipe.id"
+            :active-share="recipe.active_share ?? null"
         />
     </div>
 </template>

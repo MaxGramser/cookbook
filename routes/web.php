@@ -4,6 +4,7 @@ use App\Http\Controllers\CookSessionController;
 use App\Http\Controllers\DeveloperLoginController;
 use App\Http\Controllers\GrocerySessionController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\PublicRecipeController;
 use App\Http\Controllers\PublicShortlistController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
@@ -20,12 +21,22 @@ Route::post('dev/login', DeveloperLoginController::class)->name('dev.login');
 
 Route::get('share/{token}', [PublicShortlistController::class, 'show'])->name('share.shortlist.show');
 Route::get('share/{token}/recipes/{recipe}', [PublicShortlistController::class, 'showRecipe'])->name('share.shortlist.recipe');
+Route::post('share/{token}/recipes/{recipe}/copy', [PublicShortlistController::class, 'copyRecipe'])->name('share.shortlist.recipe.copy');
+
+Route::get('share/recipe/{token}', [PublicRecipeController::class, 'show'])->name('share.recipe.show');
+Route::post('share/recipe/{token}/copy', [PublicRecipeController::class, 'copy'])->name('share.recipe.copy');
+
+Route::get('share/recipe/claim/pending', [PublicRecipeController::class, 'claim'])
+    ->middleware('auth')
+    ->name('share.recipe.claim');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [RecipeController::class, 'index'])->name('dashboard');
 
     Route::resource('recipes', RecipeController::class);
     Route::post('recipes/{recipe}/star', [RecipeController::class, 'toggleStar'])->name('recipes.star');
+    Route::post('recipes/{recipe}/share', [RecipeController::class, 'share'])->name('recipes.share');
+    Route::delete('recipes/{recipe}/share', [RecipeController::class, 'unshare'])->name('recipes.unshare');
     Route::post('recipes/import', [RecipeImportController::class, 'store'])->name('recipes.import');
     Route::post('recipes/import/text', [RecipeImportController::class, 'storeFromText'])->name('recipes.import.text');
 

@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Recipes\DuplicateRecipe;
 use App\Models\Recipe;
+use App\Models\RecipeShare;
 use App\Models\ShortlistShare;
 use App\Models\Tag;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Symfony\Component\HttpFoundation\Response;
 
 class PublicShortlistController extends Controller
 {
@@ -107,6 +111,41 @@ class PublicShortlistController extends Controller
                 ])->values(),
             ],
         ]);
+    }
+
+    public function copyRecipe(Request $request, string $token, Recipe $recipe, DuplicateRecipe $duplicate): RedirectResponse
+    {
+        $share = $this->resolveShare($token);
+
+        if ($share === null) {
+            return redirect()->route('share.shortlist.show', $token);
+        }
+
+        $belongsToShortlist = $share->shortlist
+            ->recipes()
+            ->where('recipes.id', $recipe->id)
+            ->exists();
+
+        abort_unless($belongsToShortlist, 404);
+
+        $user = $request->user();
+
+        if ($user === null) {
+            $recipeShare = RecipeShare::create([
+                'recipe_id' => $recipe->id,
+                'token' => Str::random(40),
+                'expires_at' => now()->addDays(30),
+            ]);
+
+            $request->session()->put(PublicRecipeController::PENDING_SESSION_KEY, $recipeShare->token);
+
+            return redirect()->route('register');
+        }
+
+        $copy = $duplicate->handle($recipe, $user);
+
+        return redirect()->route('recipes.show', $copy)
+            ->with('status', 'Recept toegevoegd aan je kookboek.');
     }
 
     private function resolveShare(string $token): ?ShortlistShare

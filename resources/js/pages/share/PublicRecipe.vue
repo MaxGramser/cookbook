@@ -1,32 +1,30 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head } from '@inertiajs/vue3';
 import {
-    ArrowLeft,
     BookmarkPlus,
     ChefHat,
     Clock,
     ExternalLink,
-    NotebookPen,
     Printer,
     ShieldCheck,
     Users,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import PublicShortlistController from '@/actions/App/Http/Controllers/PublicShortlistController';
+import PublicRecipeController from '@/actions/App/Http/Controllers/PublicRecipeController';
 import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
-import type { Recipe, Tag, TagColor } from '@/types/recipes';
+import type { Recipe, TagColor } from '@/types/recipes';
 
 const props = defineProps<{
     token: string;
     expiresAt: string | null;
-    shortlist: { id: number; name: string; color: string | null };
-    note: string | null;
     recipe: Recipe;
 }>();
 
-const ingredientGroups = computed(() => groupBySection(props.recipe.ingredients));
+const ingredientGroups = computed(() =>
+    groupBySection(props.recipe.ingredients),
+);
 const stepGroups = computed(() => groupBySection(props.recipe.steps));
 const printOpen = ref<boolean>(false);
 
@@ -51,15 +49,21 @@ const expiryLabel = computed<string>(() => {
         return 'verlopen';
     }
 
-    const hours = Math.round(diffMs / (1000 * 60 * 60));
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (hours < 1) {
-        const minutes = Math.max(1, Math.round(diffMs / (1000 * 60)));
-
-        return `verloopt over ${minutes} min`;
+    if (days >= 1) {
+        return `verloopt over ${days} ${days === 1 ? 'dag' : 'dagen'}`;
     }
 
-    return `verloopt over ${hours}u`;
+    const hours = Math.round(diffMs / (1000 * 60 * 60));
+
+    if (hours >= 1) {
+        return `verloopt over ${hours}u`;
+    }
+
+    const minutes = Math.max(1, Math.round(diffMs / (1000 * 60)));
+
+    return `verloopt over ${minutes} min`;
 });
 </script>
 
@@ -71,15 +75,11 @@ const expiryLabel = computed<string>(() => {
             <div
                 class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 md:px-6"
             >
-                <Link
-                    :href="`/share/${token}`"
-                    class="inline-flex items-center gap-2 text-sm text-ink-soft transition hover:text-ink"
+                <span
+                    class="font-display text-lg leading-none tracking-tight"
                 >
-                    <ArrowLeft class="size-4" />
-                    <span class="line-clamp-1 max-w-[14rem]">
-                        {{ shortlist.name }}
-                    </span>
-                </Link>
+                    Mijn kookboek
+                </span>
                 <span
                     class="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.22em] text-ink-faint uppercase"
                 >
@@ -171,10 +171,7 @@ const expiryLabel = computed<string>(() => {
                     <div class="flex flex-wrap gap-2">
                         <Form
                             v-bind="
-                                PublicShortlistController.copyRecipe.form({
-                                    token,
-                                    recipe: recipe.id,
-                                })
+                                PublicRecipeController.copy.form(token)
                             "
                             v-slot="{ processing }"
                         >
@@ -197,31 +194,6 @@ const expiryLabel = computed<string>(() => {
                     </div>
                 </div>
             </div>
-
-            <section
-                v-if="note"
-                class="rounded-3xl bg-block-pink p-5 md:p-6"
-            >
-                <div class="flex items-start gap-3">
-                    <span
-                        class="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-cream"
-                    >
-                        <NotebookPen class="size-4" />
-                    </span>
-                    <div>
-                        <h2
-                            class="text-[11px] font-semibold tracking-[0.2em] text-ink/60 uppercase"
-                        >
-                            Notitie van de delende kok
-                        </h2>
-                        <p
-                            class="mt-1 text-sm leading-relaxed whitespace-pre-line text-ink/85"
-                        >
-                            {{ note }}
-                        </p>
-                    </div>
-                </div>
-            </section>
 
             <div class="grid gap-5 md:grid-cols-[3fr_5fr]">
                 <section class="rounded-3xl bg-cream-soft p-5 md:p-6">

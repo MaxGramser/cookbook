@@ -9,10 +9,12 @@ use App\Actions\Recipes\UpdateRecipe;
 use App\Http\Requests\RecipeStoreRequest;
 use App\Http\Requests\RecipeUpdateRequest;
 use App\Models\Recipe;
+use App\Models\RecipeShare;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -99,6 +101,8 @@ class RecipeController extends Controller
 
         $recipe->load(['ingredients', 'steps', 'tags']);
 
+        $activeShare = $recipe->shares()->valid()->latest()->first();
+
         return Inertia::render('recipes/Show', [
             'recipe' => [
                 'id' => $recipe->id,
@@ -121,6 +125,11 @@ class RecipeController extends Controller
                     'name' => $t->name,
                     'color' => $t->color,
                 ])->values(),
+                'active_share' => $activeShare ? [
+                    'token' => $activeShare->token,
+                    'url' => route('share.recipe.show', $activeShare->token),
+                    'expires_at' => $activeShare->expires_at?->toIso8601String(),
+                ] : null,
             ],
             'recentSessions' => $recipe->cookSessions()
                 ->where('user_id', $request->user()->id)
@@ -176,6 +185,30 @@ class RecipeController extends Controller
     {
         $this->authorizeOwner($request, $recipe);
         $action->handle($recipe);
+
+        return back();
+    }
+
+    public function share(Request $request, Recipe $recipe): RedirectResponse
+    {
+        $this->authorizeOwner($request, $recipe);
+
+        $recipe->shares()->delete();
+
+        RecipeShare::create([
+            'recipe_id' => $recipe->id,
+            'token' => Str::random(40),
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        return back();
+    }
+
+    public function unshare(Request $request, Recipe $recipe): RedirectResponse
+    {
+        $this->authorizeOwner($request, $recipe);
+
+        $recipe->shares()->delete();
 
         return back();
     }

@@ -68,4 +68,9 @@ class Recipe extends Model
             ->withPivot(['position', 'note'])
             ->withTimestamps();
     }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(RecipeShare::class);
+    }
 }
