@@ -4,7 +4,10 @@ import { ChefHat, Clock4 } from 'lucide-vue-next';
 </script>
 
 <template>
-    <Head title="Link verlopen" />
+    <Head>
+        <title>Link verlopen — CookBook</title>
+        <meta head-key="robots" name="robots" content="noindex, nofollow" />
+    </Head>
 
     <div
         class="flex min-h-svh flex-col items-center justify-center bg-cream px-4 text-center font-sans text-ink"
@@ -18,14 +21,13 @@ import { ChefHat, Clock4 } from 'lucide-vue-next';
             Deze deel-link is verlopen.
         </h1>
         <p class="mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
-            Deel-links zijn 24 uur geldig. Vraag de eigenaar van de shortlist
-            om een nieuwe link te genereren en op te sturen.
+            Vraag de eigenaar om een nieuwe link te genereren en op te sturen.
         </p>
         <p
             class="mt-8 inline-flex items-center gap-2 rounded-full bg-cream-soft px-4 py-2 text-[11px] font-semibold tracking-[0.18em] text-ink-faint uppercase"
         >
             <ChefHat class="size-3.5" />
-            Mijn kookboek
+            CookBook
         </p>
     </div>
 </template>

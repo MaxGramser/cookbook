@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Recipes\DuplicateRecipe;
 use App\Models\RecipeShare;
 use App\Models\Tag;
+use App\Support\Sharing\ShareMeta;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,6 +28,7 @@ class PublicRecipeController extends Controller
         return Inertia::render('share/PublicRecipe', [
             'token' => $share->token,
             'expiresAt' => $share->expires_at?->toIso8601String(),
+            'meta' => ShareMeta::forRecipe($recipe, route('share.recipe.show', $share->token)),
             'recipe' => [
                 'id' => $recipe->id,
                 'title' => $recipe->title,
@@ -69,7 +71,7 @@ class PublicRecipeController extends Controller
         $copy = $duplicate->handle($share->recipe, $user);
 
         return redirect()->route('recipes.show', $copy)
-            ->with('status', 'Recept toegevoegd aan je kookboek.');
+            ->with('status', 'Recept toegevoegd aan je CookBook.');
     }
 
     public function claim(Request $request, DuplicateRecipe $duplicate): RedirectResponse
@@ -89,7 +91,7 @@ class PublicRecipeController extends Controller
         $copy = $duplicate->handle($share->recipe, $request->user());
 
         return redirect()->route('recipes.show', $copy)
-            ->with('status', 'Recept toegevoegd aan je kookboek.');
+            ->with('status', 'Recept toegevoegd aan je CookBook.');
     }
 
     private function resolveShare(string $token): ?RecipeShare

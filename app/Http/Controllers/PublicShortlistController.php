@@ -7,6 +7,7 @@ use App\Models\Recipe;
 use App\Models\RecipeShare;
 use App\Models\ShortlistShare;
 use App\Models\Tag;
+use App\Support\Sharing\ShareMeta;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -32,6 +33,7 @@ class PublicShortlistController extends Controller
         return Inertia::render('share/Shortlist', [
             'token' => $share->token,
             'expiresAt' => $share->expires_at?->toIso8601String(),
+            'meta' => ShareMeta::forShortlist($shortlist, route('share.shortlist.show', $share->token)),
             'shortlist' => [
                 'id' => $shortlist->id,
                 'name' => $shortlist->name,
@@ -86,6 +88,10 @@ class PublicShortlistController extends Controller
         return Inertia::render('share/Recipe', [
             'token' => $share->token,
             'expiresAt' => $share->expires_at?->toIso8601String(),
+            'meta' => ShareMeta::forRecipe(
+                $recipe,
+                route('share.shortlist.recipe', ['token' => $share->token, 'recipe' => $recipe->id]),
+            ),
             'shortlist' => [
                 'id' => $share->shortlist->id,
                 'name' => $share->shortlist->name,
@@ -145,7 +151,7 @@ class PublicShortlistController extends Controller
         $copy = $duplicate->handle($recipe, $user);
 
         return redirect()->route('recipes.show', $copy)
-            ->with('status', 'Recept toegevoegd aan je kookboek.');
+            ->with('status', 'Recept toegevoegd aan je CookBook.');
     }
 
     private function resolveShare(string $token): ?ShortlistShare

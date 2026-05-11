@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Link } from '@inertiajs/vue3';
 import {
     ArrowLeft,
     BookmarkPlus,
@@ -14,13 +14,15 @@ import {
 import { computed, ref } from 'vue';
 import PublicShortlistController from '@/actions/App/Http/Controllers/PublicShortlistController';
 import PrintRecipeDialog from '@/components/PrintRecipeDialog.vue';
+import ShareHead from '@/components/ShareHead.vue';
 import { groupBySection } from '@/lib/sections';
 import { formatQuantity } from '@/lib/units';
-import type { Recipe, Tag, TagColor } from '@/types/recipes';
+import type { Recipe, ShareMeta, Tag, TagColor } from '@/types/recipes';
 
 const props = defineProps<{
     token: string;
     expiresAt: string | null;
+    meta: ShareMeta;
     shortlist: { id: number; name: string; color: string | null };
     note: string | null;
     recipe: Recipe;
@@ -64,7 +66,7 @@ const expiryLabel = computed<string>(() => {
 </script>
 
 <template>
-    <Head :title="`${recipe.title} — gedeeld`" />
+    <ShareHead :meta="meta" />
 
     <div class="min-h-svh bg-cream font-sans text-ink">
         <header class="border-b border-rule/40 bg-cream-soft/70">
@@ -184,7 +186,7 @@ const expiryLabel = computed<string>(() => {
                                 class="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-[#d35a31] active:scale-[0.98] disabled:opacity-50"
                             >
                                 <BookmarkPlus class="size-4" />
-                                Voeg toe aan mijn kookboek
+                                Voeg toe aan mijn CookBook
                             </button>
                         </Form>
                         <button
@@ -336,7 +338,7 @@ const expiryLabel = computed<string>(() => {
         <footer
             class="mx-auto max-w-5xl px-4 pt-4 pb-10 text-center text-[11px] tracking-[0.18em] text-ink-faint uppercase md:px-6"
         >
-            Read-only · gedeeld via Mijn kookboek
+            Read-only · gedeeld via CookBook
         </footer>
 
         <PrintRecipeDialog v-model:open="printOpen" :recipe="recipe" />

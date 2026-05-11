@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { ChefHat, Clock, NotebookPen, ShieldCheck, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
-import type { ShortlistRecipe } from '@/types/recipes';
+import ShareHead from '@/components/ShareHead.vue';
+import type { ShareMeta, ShortlistRecipe } from '@/types/recipes';
 
 const props = defineProps<{
     token: string;
     expiresAt: string | null;
+    meta: ShareMeta;
     shortlist: {
         id: number;
         name: string;
@@ -61,7 +63,7 @@ function recipeUrl(recipeId: number): string {
 </script>
 
 <template>
-    <Head :title="`${shortlist.name} — gedeeld`" />
+    <ShareHead :meta="meta" />
 
     <div class="min-h-svh bg-cream font-sans text-ink">
         <header class="border-b border-rule/40 bg-cream-soft/70">
@@ -198,7 +200,7 @@ function recipeUrl(recipeId: number): string {
         <footer
             class="mx-auto max-w-5xl px-4 pt-4 pb-10 text-center text-[11px] tracking-[0.18em] text-ink-faint uppercase md:px-6"
         >
-            Read-only · gedeeld via Mijn kookboek
+            Read-only · gedeeld via CookBook
         </footer>
     </div>
 </template>

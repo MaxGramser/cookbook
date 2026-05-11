@@ -25,7 +25,7 @@ const open = defineModel<boolean>('open', { required: true });
                 <DialogTitle>Importeer via URL</DialogTitle>
                 <DialogDescription>
                     Plak een link naar een receptenpagina. Wij halen 'm op en zetten het automatisch in je
-                    kookboek.
+                    CookBook.
                 </DialogDescription>
             </DialogHeader>
             <Form

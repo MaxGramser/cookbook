@@ -68,6 +68,15 @@ export type RecipeShareInfo = {
     expires_at: string | null;
 };
 
+export type ShareMeta = {
+    title: string;
+    description: string;
+    image: string | null;
+    url: string;
+    type: string;
+    site_name: string;
+};
+
 export type Recipe = {
     id: number;
     user_id: number;

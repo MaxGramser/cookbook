@@ -133,7 +133,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
 </script>
 
 <template>
-    <Head title="Mijn kookboek" />
+    <Head title="CookBook" />
 
     <div class="min-h-screen bg-cream text-ink">
         <nav class="sticky top-0 z-30 border-b border-rule bg-cream/85 backdrop-blur">
@@ -142,7 +142,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                     <span class="flex size-8 items-center justify-center rounded-full bg-ink text-cream">
                         <ChefHat class="size-4" />
                     </span>
-                    <span>Mijn kookboek</span>
+                    <span>CookBook</span>
                 </div>
                 <div class="flex items-center gap-2 text-sm">
                     <Link
@@ -150,7 +150,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                         :href="dashboard()"
                         class="rounded-full bg-ink px-4 py-2 font-medium text-cream transition active:scale-[0.98] hover:bg-[#3a2c24]"
                     >
-                        Naar mijn kookboek
+                        Naar mijn CookBook
                     </Link>
                     <template v-else>
                         <Link
@@ -181,7 +181,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                         <h1
                             class="font-display text-5xl leading-[0.95] tracking-tight md:text-6xl lg:text-[4.5rem]"
                         >
-                            Een kookboek dat
+                            Een CookBook dat
                             <span class="italic">begrijpt</span>
                             wat je kookt.
                         </h1>
@@ -200,7 +200,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                                 :href="dashboard()"
                                 class="group inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition active:scale-[0.98] hover:bg-[#3a2c24]"
                             >
-                                Naar mijn kookboek
+                                Naar mijn CookBook
                                 <ArrowRight class="size-4 transition group-hover:translate-x-0.5" />
                             </Link>
                             <template v-else>
@@ -209,7 +209,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                                     :href="register()"
                                     class="group inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition active:scale-[0.98] hover:bg-[#3a2c24]"
                                 >
-                                    Maak een kookboek
+                                    Maak je CookBook
                                     <ArrowRight class="size-4 transition group-hover:translate-x-0.5" />
                                 </Link>
                                 <Link
@@ -436,7 +436,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                             class="font-display text-4xl leading-[1.02] tracking-tight md:text-6xl"
                         >
                             Stop met scrollen door bookmarks.
-                            <span class="italic text-brand">Begin je kookboek.</span>
+                            <span class="italic text-brand">Begin je CookBook.</span>
                         </h2>
                         <p class="mt-5 max-w-xl text-base text-cream/70">
                             Gratis voor jezelf. Werkt op je telefoon, tablet en laptop.
@@ -449,7 +449,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
                             :href="dashboard()"
                             class="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-base font-medium text-ink transition active:scale-[0.98] hover:bg-[#d35a31]"
                         >
-                            Open mijn kookboek
+                            Open mijn CookBook
                             <ArrowRight class="size-4" />
                         </Link>
                         <template v-else>
@@ -479,7 +479,7 @@ const blockClass: Record<ShowcaseRecipe['block'], string> = {
             >
                 <div class="flex items-center gap-2 font-display italic">
                     <ChefHat class="size-4" />
-                    <span>Mijn kookboek — gemaakt voor goed eten</span>
+                    <span>CookBook — gemaakt voor goed eten</span>
                 </div>
                 <span class="text-ink-faint">v1</span>
             </div>

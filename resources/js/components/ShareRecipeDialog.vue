@@ -119,7 +119,7 @@ async function copy(): Promise<void> {
                 <DialogDescription>
                     Iemand met deze link kan het recept bekijken — read-only.
                     Vanaf de gedeelde pagina kunnen ze het ook in één klik aan
-                    hun eigen kookboek toevoegen. De link verloopt na 30 dagen.
+                    hun eigen CookBook toevoegen. De link verloopt na 30 dagen.
                 </DialogDescription>
             </DialogHeader>
 

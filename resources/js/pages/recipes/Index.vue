@@ -186,7 +186,7 @@ function onDragEnd(): void {
 </script>
 
 <template>
-    <Head title="Mijn kookboek" />
+    <Head title="CookBook" />
 
     <div class="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
         <div class="rounded-3xl bg-ink p-6 text-cream md:p-8">
@@ -418,7 +418,7 @@ function onDragEnd(): void {
                 {{
                     hasActiveFilter
                         ? 'Niets gevonden.'
-                        : 'Je kookboek is nog leeg.'
+                        : 'Je CookBook is nog leeg.'
                 }}
             </h2>
             <p class="mt-2 text-sm text-ink-soft">

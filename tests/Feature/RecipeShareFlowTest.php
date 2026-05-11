@@ -87,6 +87,82 @@ test('a guest can view a shared recipe via its token', function () {
         );
 });
 
+test('public recipe page exposes meta props for OG tags', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $recipe = Recipe::factory()->for($user)->create([
+        'title' => 'Risotto alla milanese',
+        'image_path' => 'recipes/cover.webp',
+        'cook_time_minutes' => 35,
+        'servings' => 4,
+        'notes' => null,
+    ]);
+    RecipeShare::create([
+        'recipe_id' => $recipe->id,
+        'token' => 'meta-token',
+        'expires_at' => now()->addDays(30),
+    ]);
+
+    $this->get('/share/recipe/meta-token')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('meta.title', 'Risotto alla milanese')
+            ->where('meta.type', 'article')
+            ->where('meta.site_name', 'CookBook')
+            ->where('meta.image', url('storage/recipes/cover.webp'))
+            ->where('meta.url', url('/share/recipe/meta-token'))
+            ->where('meta.description', fn (string $d) => str_contains($d, '35 min') && str_contains($d, '4 personen'))
+        );
+});
+
+test('public shortlist page exposes meta props with first-recipe image as og image', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create(['name' => 'Pasta-avond']);
+    $first = Recipe::factory()->for($user)->create(['image_path' => 'recipes/first.webp']);
+    $second = Recipe::factory()->for($user)->create(['image_path' => 'recipes/second.webp']);
+    $shortlist->recipes()->attach($first->id, ['position' => 0]);
+    $shortlist->recipes()->attach($second->id, ['position' => 1]);
+
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'sl-meta-token',
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $this->get('/share/sl-meta-token')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('meta.title', 'Pasta-avond')
+            ->where('meta.type', 'website')
+            ->where('meta.site_name', 'CookBook')
+            ->where('meta.image', url('storage/recipes/first.webp'))
+            ->where('meta.description', fn (string $d) => str_contains($d, '2 recepten'))
+        );
+});
+
+test('shortlist recipe share page exposes meta props', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+    $shortlist = Shortlist::factory()->for($user)->create();
+    $recipe = Recipe::factory()->for($user)->create([
+        'title' => 'Lasagne bolognese',
+        'image_path' => 'recipes/lasagne.webp',
+    ]);
+    $shortlist->recipes()->attach($recipe->id, ['position' => 0]);
+    ShortlistShare::create([
+        'shortlist_id' => $shortlist->id,
+        'token' => 'sl-recipe-meta',
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $this->get("/share/sl-recipe-meta/recipes/{$recipe->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('meta.title', 'Lasagne bolognese')
+            ->where('meta.site_name', 'CookBook')
+            ->where('meta.image', url('storage/recipes/lasagne.webp'))
+            ->where('meta.url', url("/share/sl-recipe-meta/recipes/{$recipe->id}"))
+        );
+});
+
 test('an expired recipe share renders the expired page with a 410 status', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
     $recipe = Recipe::factory()->for($user)->create();
